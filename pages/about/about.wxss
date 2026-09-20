@@ -1,0 +1,55 @@
+/* pages/about/about.wxss */
+.page { padding: 32rpx; }
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 0 24rpx;
+}
+.logo {
+  font-size: 56rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+.logo .em { color: var(--primary); }
+.slogan { font-size: 26rpx; color: var(--sub); margin-top: 12rpx; }
+.ver {
+  font-size: 22rpx;
+  color: var(--primary);
+  background: var(--primary-weak);
+  border-radius: 24rpx;
+  padding: 6rpx 24rpx;
+  margin-top: 24rpx;
+}
+
+.ver-card { padding: 28rpx 32rpx; margin-bottom: 24rpx; }
+.vhead {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.vtag {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 10rpx;
+  padding: 4rpx 14rpx;
+}
+.vtitle { font-size: 28rpx; font-weight: 600; flex: 1; }
+.vdate { font-size: 22rpx; color: var(--sub); }
+.vitems { margin-top: 18rpx; }
+.vitem {
+  font-size: 24rpx;
+  color: #55544E;
+  line-height: 1.8;
+}
+.vitem .dot { color: var(--primary); font-weight: 700; margin-right: 10rpx; }
+
+.foot {
+  text-align: center;
+  font-size: 22rpx;
+  color: #B9B6AA;
+  padding: 32rpx 0;
+}

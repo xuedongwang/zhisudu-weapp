@@ -1,0 +1,72 @@
+<!-- pages/mine/mine.wxml -->
+<view class="page">
+  <!-- 用户资料区（头像/昵称：官方合规填写组件，云端同步） -->
+  <view class="profile-card card">
+    <view class="avatar-wrap">
+      <image wx:if="{{profile.avatar}}" class="avatar-img" src="{{profile.avatar}}" mode="aspectFill" />
+      <view wx:else class="avatar-holder">
+        <image class="avatar-icon" src="{{icons.user}}" mode="aspectFit" />
+        <view class="avatar-tip">设置微信头像</view>
+      </view>
+      <!-- 透明按钮覆盖层：提供 chooseAvatar 能力，不影响布局 -->
+      <button class="overlay-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
+    </view>
+    <view class="profile-info">
+      <input class="nick-input" type="nickname" placeholder="点击填写昵称（可一键填入微信昵称）"
+             placeholder-class="nick-ph"
+             value="{{profile.nickname}}" bindblur="onNickname" bindconfirm="onNickname" />
+      <view class="profile-sub">
+        <text class="sub-text">模板 {{templates.length}}/{{tplLimit}} · 收藏 {{favCount}} 个</text>
+        <text wx:if="{{cloudReady}}" class="cloud-tag">已同步云端</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 我的模板 -->
+  <view class="sec-title">我的模板<text class="more">上限 {{tplLimit}} 个</text></view>
+  <view class="tpl-card card" wx:if="{{templates.length}}">
+    <view class="tpl-item" wx:for="{{templates}}" wx:key="id">
+      <view class="ticon">
+        <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
+      </view>
+      <view class="tinfo">
+        <view class="tname">{{item.name}}</view>
+        <view class="tmeta">{{item.paperName}} · {{item.desc}}</view>
+      </view>
+      <view class="tapply" data-id="{{item.id}}" data-type="{{item.type}}" bindtap="applyTpl" hover-class="tbtn-hover">套用</view>
+      <view class="tdel" data-id="{{item.id}}" bindtap="deleteTpl" hover-class="tbtn-hover">删除</view>
+    </view>
+  </view>
+  <view class="card empty" wx:else>还没有模板，在配置页点「存为模板」即可保存常用参数</view>
+
+  <!-- 通用（view 为视觉层，透明 button 覆盖层提供 contact/feedback 能力，保证对齐一致） -->
+  <view class="sec-title">通用</view>
+  <view class="menu-card card">
+    <view class="menu-item" bindtap="goFavs" hover-class="item-hover">
+      <image class="micon" src="{{icons.starLine}}" mode="aspectFit" />
+      <text class="mtext">我的收藏</text>
+      <text class="mval">{{favCount}} 个</text>
+      <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
+    </view>
+    <view class="menu-item" hover-class="item-hover">
+      <image class="micon" src="{{icons.headset}}" mode="aspectFit" />
+      <text class="mtext">联系客服</text>
+      <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
+      <button class="overlay-btn" open-type="contact"></button>
+    </view>
+    <view class="menu-item" hover-class="item-hover">
+      <image class="micon" src="{{icons.chat}}" mode="aspectFit" />
+      <text class="mtext">意见反馈</text>
+      <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
+      <button class="overlay-btn" open-type="feedback"></button>
+    </view>
+    <view class="menu-item" bindtap="goAbout" hover-class="item-hover">
+      <image class="micon" src="{{icons.info}}" mode="aspectFit" />
+      <text class="mtext">关于纸速打</text>
+      <text class="mval">v1.0.0</text>
+      <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
+    </view>
+  </view>
+
+  <view style="height: 40rpx;" />
+</view>

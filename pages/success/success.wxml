@@ -1,0 +1,34 @@
+<!-- pages/success/success.wxml -->
+<view class="page">
+  <scroll-view scroll-y class="scroll" enhanced show-scrollbar="{{false}}">
+    <view class="ok-ring">
+      <view class="ok-check">✓</view>
+    </view>
+    <view class="ok-title">图片已生成</view>
+    <view class="meta">{{meta}}</view>
+    <view class="meta warn" wx:if="{{downgraded}}">当前设备已自动降级至 200DPI，打印时请选择 100% 缩放</view>
+
+    <view class="thumb-wrap">
+      <image class="thumb" src="{{tempPath}}" mode="aspectFit" />
+    </view>
+
+    <!-- 打印指引（FR-06.4） -->
+    <view class="guide card">
+      <view class="guide-title">🖨️ 打印指引</view>
+      <view class="guide-body">
+        <view>1. 电脑微信打开图片 → 右键「打印」</view>
+        <view>2. 纸张选 A4，缩放设为 100%（实际大小）</view>
+        <view>3. 取消勾选「适应页面」，边距选「无」</view>
+        <view>4. 打印后可用尺子核验格宽是否与设置一致</view>
+      </view>
+    </view>
+
+    <view class="actions">
+      <button class="btn btn-primary" bindtap="onSendToPC" hover-class="none">📤 发到电脑（文件传输助手）</button>
+      <button class="btn btn-ghost" bindtap="onSave" disabled="{{saving}}" hover-class="none">保存到相册</button>
+      <button class="btn btn-plain" bindtap="onDone" hover-class="none">完成</button>
+    </view>
+    <view class="hint">💡 小程序无法直连打印机，通过微信文件传到电脑打印最快</view>
+    <view style="height: 40rpx;" />
+  </scroll-view>
+</view>

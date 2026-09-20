@@ -1,0 +1,17 @@
+<!-- pages/favs/favs.wxml -->
+<view class="page">
+  <view class="card" wx:if="{{favs.length}}">
+    <view class="fav-item" wx:for="{{favs}}" wx:key="key">
+      <view class="ficon">
+        <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
+      </view>
+      <view class="finfo">
+        <view class="fname">{{item.name}}</view>
+        <view class="fdesc">{{item.desc}}</view>
+      </view>
+      <view class="fopen" data-type="{{item.key}}" bindtap="openConfig" hover-class="tbtn-hover">去生成</view>
+      <view class="fdel" data-type="{{item.key}}" bindtap="removeFav" hover-class="tbtn-hover">取消收藏</view>
+    </view>
+  </view>
+  <view class="card empty" wx:else>暂无收藏，去首页长按纸型卡片即可收藏</view>
+</view>

@@ -1,0 +1,26 @@
+<!-- pages/about/about.wxml -->
+<view class="page">
+  <!-- 品牌区 -->
+  <view class="brand">
+    <view class="logo">纸<text class="em">速</text>打</view>
+    <view class="slogan">一分钟，打好一张练习纸</view>
+    <view class="ver">当前版本 v1.0.0</view>
+  </view>
+
+  <!-- 更新历史 -->
+  <view class="sec-title">版本更新历史</view>
+  <view class="card ver-card" wx:for="{{versions}}" wx:key="version">
+    <view class="vhead">
+      <view class="vtag">{{item.version}}</view>
+      <view class="vtitle">{{item.title}}</view>
+      <view class="vdate">{{item.date}}</view>
+    </view>
+    <view class="vitems">
+      <view class="vitem" wx:for="{{item.items}}" wx:for-item="line" wx:key="*this">
+        <text class="dot">·</text>{{line}}
+      </view>
+    </view>
+  </view>
+
+  <view class="foot">纸速打 · 让每张练习纸都合手</view>
+</view>

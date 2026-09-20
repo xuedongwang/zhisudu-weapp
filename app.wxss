@@ -1,0 +1,107 @@
+/* app.wxss —— 全局样式与公共组件类（配色与高保真原型一致） */
+
+page {
+  --bg: #F6F5F1;
+  --card: #FFFFFF;
+  --ink: #2B2B28;
+  --sub: #8A897F;
+  --line: #E8E6DF;
+  --primary: #0E8A6D;
+  --primary-deep: #0A6B54;
+  --primary-weak: #E3F3EE;
+  --danger: #D9534F;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 28rpx;
+}
+
+/* 卡片 */
+.card {
+  background: var(--card);
+  border-radius: 24rpx;
+  box-shadow: 0 6rpx 24rpx rgba(40, 40, 30, 0.08);
+  padding: 28rpx;
+  box-sizing: border-box;
+}
+
+/* 分组标题 */
+.sec-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 30rpx;
+  font-weight: 600;
+  margin: 32rpx 4rpx 20rpx;
+}
+.sec-title .more {
+  font-size: 24rpx;
+  color: var(--sub);
+  font-weight: 400;
+}
+
+/* 选项 chip */
+.chip {
+  padding: 12rpx 30rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  background: #F0EEE8;
+  color: var(--ink);
+  border: 3rpx solid transparent;
+  box-sizing: border-box;
+}
+.chip.on {
+  background: var(--primary-weak);
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.chip.dis {
+  opacity: 0.4;
+}
+
+/* 按钮 */
+.btn {
+  border: none;
+  border-radius: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 96rpx;
+  text-align: center;
+}
+.btn::after { border: none; }
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(14, 138, 109, 0.3);
+}
+.btn-ghost {
+  background: #fff;
+  color: var(--primary);
+  border: 3rpx solid var(--primary);
+}
+.btn-plain {
+  background: #F0EEE8;
+  color: var(--ink);
+}
+.btn[disabled] { opacity: 0.6; }
+
+/* 广告位占位（流量主开通后替换为 ad 组件，PRD FR-13） */
+.ad-placeholder {
+  height: 120rpx;
+  border-radius: 20rpx;
+  background: repeating-linear-gradient(45deg, #F1EFE9, #F1EFE9 16rpx, #ECE9E1 16rpx, #ECE9E1 32rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  color: #B9B6AA;
+  margin-top: 32rpx;
+}
+
+/* 空状态 */
+.empty {
+  text-align: center;
+  color: var(--sub);
+  font-size: 24rpx;
+  padding: 32rpx 0;
+}

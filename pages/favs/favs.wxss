@@ -1,0 +1,44 @@
+/* pages/favs/favs.wxss */
+.page { padding: 24rpx 32rpx; }
+.card { padding: 8rpx 28rpx; }
+.fav-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.fav-item:last-child { border-bottom: none; }
+.ficon {
+  width: 60rpx;
+  height: 84rpx;
+  border: 1rpx solid var(--line);
+  border-radius: 10rpx;
+  background: #FDFCFA;
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ficon image { width: 100%; height: 100%; display: block; }
+.finfo { flex: 1; min-width: 0; }
+.fname { font-size: 27rpx; font-weight: 500; }
+.fdesc { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
+.fopen,
+.fdel {
+  flex: none;
+  font-size: 23rpx;
+  border-radius: 28rpx;
+  padding: 0 24rpx;
+  line-height: 52rpx;
+  text-align: center;
+}
+.fopen {
+  color: var(--primary);
+  border: 3rpx solid var(--primary);
+  background: #fff;
+  font-weight: 600;
+}
+.fdel { color: var(--sub); background: #F0EEE8; }
+.tbtn-hover { opacity: 0.7; }

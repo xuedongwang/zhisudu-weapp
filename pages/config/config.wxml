@@ -1,0 +1,89 @@
+<!-- pages/config/config.wxml -->
+<!-- 使用原生页面滚动（不用 scroll-view），吸底栏 fixed，保证任何机型都能正常滚动 -->
+<view class="preview-area">
+  <!-- 尺寸标签独立一行（右对齐），不与 canvas 重叠：iOS 真机 canvas 原生层会盖住重叠的 view -->
+  <view class="stage-caption">
+    <view class="size-tag">A4 · {{orient === 'l' ? '横向' : '纵向'}}</view>
+  </view>
+  <view class="paper-stage">
+    <canvas type="2d" id="preview" class="preview-canvas"
+            style="width: {{pw}}px; height: {{ph}}px;" />
+  </view>
+</view>
+
+<view class="params-wrap">
+  <view class="card param-card">
+    <!-- 尺寸（本期 A4 全精度，A5/B5 为缩放变体，PRD FR-02.1） -->
+    <view class="prow">
+      <view class="plabel"><text class="b">纸张尺寸</text></view>
+      <view class="chips">
+        <view class="chip on">A4</view>
+        <view class="chip dis">A5</view>
+        <view class="chip dis">B5</view>
+      </view>
+    </view>
+
+    <!-- 方向 -->
+    <view class="prow">
+      <view class="plabel"><text class="b">方向</text></view>
+      <view class="chips">
+        <view class="chip {{orient === 'p' ? 'on' : ''}}" data-v="p" bindtap="onOrient">纵向</view>
+        <view class="chip {{orient === 'l' ? 'on' : ''}}" data-v="l" bindtap="onOrient">横向</view>
+      </view>
+    </view>
+
+    <!-- 格宽/行高/线距（FR-02.3） -->
+    <view class="prow">
+      <view class="plabel"><text class="b">{{cellLabel}}</text><text class="pval">{{cell}} mm</text></view>
+      <slider min="{{cellMin}}" max="{{cellMax}}" step="{{cellStep}}" value="{{cell}}"
+              activeColor="#0E8A6D" block-size="24" bindchanging="onCellInput" bindchange="onCellInput" />
+    </view>
+
+    <!-- 边距（FR-02.5） -->
+    <view class="prow">
+      <view class="plabel"><text class="b">边距</text><text class="pval">{{margin}} mm</text></view>
+      <slider min="5" max="25" step="1" value="{{margin}}"
+              activeColor="#0E8A6D" block-size="24" bindchanging="onMarginInput" bindchange="onMarginInput" />
+    </view>
+
+    <!-- 线色（FR-02.4） -->
+    <view class="prow">
+      <view class="plabel"><text class="b">线条颜色</text></view>
+      <view class="swatches">
+        <view class="swatch {{color === item.value ? 'on' : ''}}"
+              style="background: {{item.value}};"
+              wx:for="{{colors}}" wx:key="value"
+              data-v="{{item.value}}" bindtap="onColor" />
+      </view>
+    </view>
+
+    <!-- 线型（FR-02.4） -->
+    <view class="prow">
+      <view class="plabel"><text class="b">线条样式</text></view>
+      <view class="chips">
+        <view class="chip {{style === item.value ? 'on' : ''}}"
+              wx:for="{{styles}}" wx:key="value"
+              data-v="{{item.value}}" bindtap="onStyle">{{item.name}}</view>
+      </view>
+    </view>
+
+    <!-- 口算纸分栏（FR-02.6） -->
+    <view class="prow" wx:if="{{hasCols}}">
+      <view class="plabel"><text class="b">分栏数</text><text class="pval">{{cols}} 栏</text></view>
+      <view class="chips">
+        <view class="chip {{cols === 1 ? 'on' : ''}}" data-v="1" bindtap="onCols">1 栏</view>
+        <view class="chip {{cols === 2 ? 'on' : ''}}" data-v="2" bindtap="onCols">2 栏</view>
+        <view class="chip {{cols === 3 ? 'on' : ''}}" data-v="3" bindtap="onCols">3 栏</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="export-note">导出规格：A4 · 300DPI（2480×3508px）· 保存相册 / 微信发送</view>
+  <!-- 底部留白由 .params-wrap 的 padding-bottom 提供（含吸底栏高度与安全区） -->
+</view>
+
+<!-- 吸底操作栏 -->
+<view class="bottom-bar">
+  <button class="btn btn-plain btn-save" bindtap="onSaveTemplate" hover-class="none">存为模板</button>
+  <button class="btn btn-primary btn-export" bindtap="onExport" disabled="{{exporting}}" hover-class="none">导出图片</button>
+</view>

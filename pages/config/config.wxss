@@ -1,0 +1,93 @@
+/* pages/config/config.wxss */
+/* 原生页面滚动：page 高度自适应，吸底栏 fixed */
+
+/* 预览区：顶部留白保证标签不被导航栏裁切 */
+.preview-area {
+  padding: 28rpx 32rpx 20rpx;
+}
+.paper-stage {
+  background: #FDFCFA;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 32rpx rgba(40, 40, 30, 0.12);
+  padding: 20rpx;
+  position: relative;
+}
+/* 尺寸标签：独立行右对齐，不叠在 canvas 上（iOS 真机 canvas 原生层会盖住重叠区域） */
+.stage-caption {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8rpx 12rpx;
+}
+.size-tag {
+  background: rgba(43, 43, 40, 0.82);
+  color: #fff;
+  font-size: 20rpx;
+  line-height: 1;
+  padding: 8rpx 18rpx;
+  border-radius: 18rpx;
+}
+.preview-canvas {
+  display: block;
+  border-radius: 8rpx;
+  background: #fff;
+}
+
+/* 参数区：底部 padding 预留吸底栏高度（96 按钮 + 40 上下内边距）+ 安全区，保证最后一行能滚出遮挡 */
+.params-wrap {
+  padding: 0 32rpx calc(180rpx + env(safe-area-inset-bottom));
+}
+.param-card { padding: 4rpx 32rpx; }
+.prow {
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.prow:last-child { border-bottom: none; }
+.plabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 26rpx;
+  margin-bottom: 18rpx;
+}
+.plabel .b { font-weight: 600; }
+.pval {
+  color: var(--primary);
+  font-weight: 700;
+  font-family: Menlo, monospace;
+}
+.chips { display: flex; gap: 16rpx; flex-wrap: wrap; }
+
+/* 色板 */
+.swatches { display: flex; gap: 28rpx; }
+.swatch {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  border: 5rpx solid transparent;
+  box-shadow: inset 0 0 0 4rpx #fff;
+  box-sizing: border-box;
+}
+.swatch.on { border-color: var(--primary); }
+
+.export-note {
+  font-size: 22rpx;
+  color: var(--sub);
+  text-align: center;
+  margin-top: 24rpx;
+}
+
+/* 吸底操作栏（fixed，脱离文档流） */
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  gap: 20rpx;
+  padding: 16rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1rpx solid var(--line);
+}
+.btn-save { flex: 0 0 220rpx; }
+.btn-export { flex: 1; }

@@ -1,0 +1,115 @@
+/* pages/home/home.wxss */
+.page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-head {
+  padding: 24rpx 40rpx 8rpx;
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 20rpx;
+}
+.home-head .name {
+  font-size: 40rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+.home-head .em { color: var(--primary); }
+.home-head .slogan {
+  font-size: 24rpx;
+  color: var(--sub);
+}
+
+.scroll {
+  flex: 1;
+  padding: 0 32rpx;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+/* 收藏行 */
+.fav-row { white-space: nowrap; }
+.fav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  background: #fff;
+  border-radius: 40rpx;
+  padding: 14rpx 28rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  box-shadow: 0 6rpx 24rpx rgba(40, 40, 30, 0.08);
+  margin-right: 16rpx;
+}
+.fav-chip .star { color: #F5A623; }
+
+/* 纸型卡片 */
+.paper-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+}
+.paper-card {
+  width: calc(50% - 12rpx);
+  background: #fff;
+  border-radius: 28rpx;
+  box-shadow: 0 6rpx 24rpx rgba(40, 40, 30, 0.08);
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+.pressed { transform: scale(0.97); }
+.paper-thumb {
+  width: 100%;
+  height: 320rpx;
+  border-radius: 16rpx;
+  background: #FDFCFA;
+  border: 1rpx solid var(--line);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.paper-thumb image { width: 100%; height: 100%; }
+.thumb-loading { width: 60%; height: 80%; background: #F2F0EA; border-radius: 8rpx; }
+.pname { font-size: 28rpx; font-weight: 600; margin-top: 18rpx; }
+.pdesc { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
+
+/* 最近记录 */
+.recent-card { padding: 8rpx 28rpx; }
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.recent-item:last-child { border-bottom: none; }
+.ricon {
+  width: 64rpx;
+  height: 90rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid var(--line);
+  background: #FDFCFA;
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ricon image { width: 100%; height: 100%; }
+.rinfo { flex: 1; min-width: 0; }
+.rname { font-size: 27rpx; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtime { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
+.rbtn {
+  flex: none;
+  font-size: 24rpx;
+  color: var(--primary);
+  background: var(--primary-weak);
+  border-radius: 28rpx;
+  padding: 0 24rpx;
+  line-height: 56rpx;
+  font-weight: 600;
+}

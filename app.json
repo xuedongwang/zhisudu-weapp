@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/config/config",
+    "pages/success/success",
+    "pages/mine/mine",
+    "pages/favs/favs",
+    "pages/about/about"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F6F5F1",
+    "navigationBarTitleText": "纸速打",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F6F5F1",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8A897F",
+    "selectedColor": "#0E8A6D",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "renderer": "webview",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}
