@@ -110,18 +110,17 @@
   white-space: nowrap;
 }
 .rtime { font-size: 22rpx; color: var(--sub); margin-top: 6rpx; line-height: 1.4; }
-/* 「再次生成」对齐全局 .btn 规范：flex 居中 + 固定宽高，不用 line-height 撑高
-   （文案换行会把按钮高度翻倍，导出页历史问题）；清 button 默认 margin 与
-   ::after 描边，否则浅色底上有一圈灰线、右缘也不贴齐 */
+/* 「再次生成」对齐全局 .btn 规范：flex 居中 + 高度固定（宽度由内容撑开 + padding），
+   不用 line-height 撑高（文案换行会把按钮高度翻倍，导出页历史问题）；
+   清 button 默认 margin 与 ::after 描边，否则浅色底上有一圈灰线、右缘也不贴齐 */
 .rbtn {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 132rpx; /* 4 字文案 92rpx + 两侧各 20rpx；用户 2026-09-23 反馈 156rpx 偏长 */
   height: 60rpx;
   margin: 0;
-  padding: 0;
+  padding: 0 24rpx; /* 宽度由内容撑开 + 适当 padding（用户 2026-09-23 最终口径：不用固定宽度） */
   box-sizing: border-box;
   white-space: nowrap;
   overflow: hidden;
