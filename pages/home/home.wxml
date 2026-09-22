@@ -46,7 +46,7 @@
           <view class="rname">{{item.title}}</view>
           <view class="rtime">{{item.sub}}</view>
         </view>
-        <button class="rbtn" data-index="{{index}}" bindtap="reuseRecent" hover-class="none">再次生成</button>
+        <button class="rbtn" data-index="{{index}}" bindtap="reuseRecent" hover-class="rbtn-hover">再次生成</button>
       </view>
     </view>
 

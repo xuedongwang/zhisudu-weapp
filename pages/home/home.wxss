@@ -78,12 +78,12 @@
 .pdesc { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
 
 /* 最近记录 */
-.recent-card { padding: 8rpx 28rpx; }
+.recent-card { padding: 12rpx 28rpx; }
 .recent-item {
   display: flex;
   align-items: center;
-  gap: 20rpx;
-  padding: 22rpx 0;
+  gap: 24rpx;
+  padding: 24rpx 0;
   border-bottom: 1rpx solid var(--line);
 }
 .recent-item:last-child { border-bottom: none; }
@@ -101,15 +101,37 @@
 }
 .ricon image { width: 100%; height: 100%; }
 .rinfo { flex: 1; min-width: 0; }
-.rname { font-size: 27rpx; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rtime { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
+.rname {
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rtime { font-size: 22rpx; color: var(--sub); margin-top: 6rpx; line-height: 1.4; }
+/* 「再次生成」对齐全局 .btn 规范：flex 居中 + 固定宽高，不用 line-height 撑高
+   （文案换行会把按钮高度翻倍，导出页历史问题）；清 button 默认 margin 与
+   ::after 描边，否则浅色底上有一圈灰线、右缘也不贴齐 */
 .rbtn {
   flex: none;
-  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 156rpx;
+  height: 60rpx;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  border: none;
+  border-radius: 30rpx;
+  font-size: 23rpx;
+  font-weight: 600;
+  line-height: 1.2;
   color: var(--primary);
   background: var(--primary-weak);
-  border-radius: 22rpx;
-  padding: 0 18rpx;
-  line-height: 46rpx;
-  font-weight: 600;
 }
+.rbtn::after { border: none; }
+.rbtn-hover { opacity: 0.75; transform: scale(0.96); }

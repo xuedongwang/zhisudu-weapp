@@ -6,6 +6,6 @@
 // 属于典型的「文档已升版、界面没跟上」。
 // 此后升版只需改这里一处，外加 `pages/about/about.js` 的 VERSIONS 首条。
 
-const CURRENT_VERSION = 'v1.2.1'
+const CURRENT_VERSION = 'v1.2.2'
 
 module.exports = { CURRENT_VERSION }

@@ -6,6 +6,15 @@ const { CURRENT_VERSION } = require('../../utils/version')
 
 const VERSIONS = [
   {
+    version: 'v1.2.2',
+    date: '2026-09-22',
+    title: '优化：首页「最近生成」排版',
+    items: [
+      '「再次生成」按钮重排：固定尺寸、右缘整齐对齐，清除默认描边，按压时有轻缩放反馈',
+      '左侧标题与时间排版更舒展，标题字号与纸型卡片统一',
+    ],
+  },
+  {
     version: 'v1.2.1',
     date: '2026-09-22',
     title: '修复：换设备后云端数据拉不回来的问题',
