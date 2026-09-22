@@ -7,20 +7,23 @@
     <view class="ver">当前版本 {{currentVersion}}</view>
   </view>
 
-  <!-- 更新历史 -->
+  <!-- 更新历史（仅记录正式发布版本；未发布时显示空态，见 about.js 填写规则） -->
   <view class="sec-title">版本更新历史</view>
-  <view class="card ver-card" wx:for="{{versions}}" wx:key="version">
-    <view class="vhead">
-      <view class="vtag">{{item.version}}</view>
-      <view class="vtitle">{{item.title}}</view>
-      <view class="vdate">{{item.date}}</view>
-    </view>
-    <view class="vitems">
-      <view class="vitem" wx:for="{{item.items}}" wx:for-item="line" wx:key="*this">
-        <text class="dot">·</text>{{line}}
+  <block wx:if="{{versions.length}}">
+    <view class="card ver-card" wx:for="{{versions}}" wx:key="version">
+      <view class="vhead">
+        <view class="vtag">{{item.version}}</view>
+        <view class="vtitle">{{item.title}}</view>
+        <view class="vdate">{{item.date}}</view>
+      </view>
+      <view class="vitems">
+        <view class="vitem" wx:for="{{item.items}}" wx:for-item="line" wx:key="*this">
+          <text class="dot">·</text>{{line}}
+        </view>
       </view>
     </view>
-  </view>
+  </block>
+  <view class="card empty" wx:else>正式版发布后，版本更新记录将在此展示</view>
 
   <view class="foot">纸速打 · 让每张练习纸都合手</view>
 </view>
