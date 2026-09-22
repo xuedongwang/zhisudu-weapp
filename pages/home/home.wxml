@@ -11,37 +11,40 @@
     <view class="sec-title" style="margin-top: 8rpx;">我的收藏</view>
     <scroll-view scroll-x class="fav-row" enhanced show-scrollbar="{{false}}" wx:if="{{favs.length}}">
       <view class="fav-chip" wx:for="{{favs}}" wx:key="key"
-            data-type="{{item.key}}" bindtap="openConfig">
+            data-type="{{item.key}}" data-source="fav" bindtap="openConfig">
         <text class="star">★</text>{{item.name}}
       </view>
     </scroll-view>
     <view class="card empty" wx:else>☆ 长按纸型卡片可收藏，收藏后置顶在这里</view>
 
-    <!-- 儿童场景纸 -->
-    <view class="sec-title">儿童场景纸<text class="more">{{papers.length}} 种</text></view>
-    <view class="paper-grid">
-      <view class="paper-card" wx:for="{{papers}}" wx:key="key"
-            data-type="{{item.key}}" bindtap="openConfig"
-            bindlongpress="onPaperLongPress" hover-class="pressed">
-        <view class="paper-thumb">
-          <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
-          <view wx:else class="thumb-loading" />
+    <!-- 纸型分类分组（FR-01）：12 种纸型按用途分四类，原先把全部纸型塞在「儿童场景纸」
+         一个标题下，新增中学 / 成人向纸型后标题名不副实 -->
+    <block wx:for="{{groups}}" wx:key="key" wx:for-item="g">
+      <view class="sec-title">{{g.name}}<text class="more">{{g.papers.length}} 种</text></view>
+      <view class="paper-grid">
+        <view class="paper-card" wx:for="{{g.papers}}" wx:key="key"
+              data-type="{{item.key}}" data-source="group" bindtap="openConfig"
+              bindlongpress="onPaperLongPress" hover-class="pressed">
+          <view class="paper-thumb">
+            <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
+            <view wx:else class="thumb-loading" />
+          </view>
+          <view class="pname">{{item.name}}</view>
+          <view class="pdesc">{{item.desc}}</view>
         </view>
-        <view class="pname">{{item.name}}</view>
-        <view class="pdesc">{{item.desc}}</view>
       </view>
-    </view>
+    </block>
 
-    <!-- 最近生成 -->
-    <view class="sec-title" wx:if="{{recent.length}}">最近生成<text class="more">保留 {{recent.length}}/10 条</text></view>
+    <!-- 最近生成（参数复用快捷入口；完整流水与累计张数在打印历史页） -->
+    <view class="sec-title" wx:if="{{recent.length}}">最近生成<text class="more" style="padding: 12rpx 0 12rpx 24rpx;" bindtap="goHistory">{{hisTotal ? '共 ' + hisTotal + ' 张 ›' : '查看全部 ›'}}</text></view>
     <view class="card recent-card" wx:if="{{recent.length}}">
       <view class="recent-item" wx:for="{{recent}}" wx:key="index">
         <view class="ricon">
           <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
         </view>
         <view class="rinfo">
-          <view class="rname">{{item.name}} · {{item.desc}}</view>
-          <view class="rtime">{{item.timeText}}</view>
+          <view class="rname">{{item.title}}</view>
+          <view class="rtime">{{item.sub}}</view>
         </view>
         <button class="rbtn" data-index="{{index}}" bindtap="reuseRecent" hover-class="none">再次生成</button>
       </view>

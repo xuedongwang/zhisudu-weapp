@@ -1,0 +1,100 @@
+/* pages/history/history.wxss */
+.page { padding: 24rpx 32rpx 0; }
+
+/* ===== 统计卡 ===== */
+.stat-card { padding: 30rpx 32rpx; }
+.stat-line { display: flex; align-items: baseline; gap: 8rpx; }
+.stat-num {
+  font-size: 60rpx;
+  font-weight: 700;
+  color: var(--primary);
+  font-family: Menlo, monospace;
+  line-height: 1;
+}
+.stat-unit { font-size: 26rpx; color: var(--primary); font-weight: 600; }
+.stat-label {
+  margin-left: 12rpx;
+  font-size: 24rpx;
+  color: var(--sub);
+}
+.stat-top {
+  margin-top: 16rpx;
+  font-size: 23rpx;
+  color: var(--sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 历史列表 ===== */
+.his-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.his-item:last-child { border-bottom: none; }
+.hicon {
+  width: 60rpx;
+  height: 84rpx;
+  border: 1rpx solid var(--line);
+  border-radius: 10rpx;
+  background: #FDFCFA;
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hicon image { width: 100%; height: 100%; display: block; }
+.hinfo { flex: 1; min-width: 0; }
+.hname {
+  font-size: 27rpx;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hmeta { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
+.hbtn {
+  flex: none;
+  font-size: 23rpx;
+  border-radius: 28rpx;
+  padding: 0 24rpx;
+  line-height: 52rpx;
+  text-align: center;
+  box-sizing: border-box;
+  border: 3rpx solid var(--primary);
+  color: var(--primary);
+  background: #fff;
+  font-weight: 600;
+}
+.hbtn-hover { opacity: 0.7; }
+
+/* ===== 清空（危险操作：红字红描边，与模板删除一致） ===== */
+.btn-danger-outline {
+  margin: 40rpx 0 0;
+  background: #fff;
+  color: var(--danger);
+  border: 3rpx solid var(--danger);
+  font-size: 28rpx;
+}
+.foot-note {
+  margin-top: 20rpx;
+  font-size: 22rpx;
+  color: var(--sub);
+  text-align: center;
+}
+
+/* ===== 空态 ===== */
+.empty { padding: 64rpx 32rpx; }
+.empty-sub {
+  margin-top: 12rpx;
+  font-size: 23rpx;
+  color: #B9B6AA;
+}
+.btn-go {
+  margin: 40rpx auto 0;
+  width: 360rpx;
+}

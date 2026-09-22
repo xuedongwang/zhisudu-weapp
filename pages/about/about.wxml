@@ -4,7 +4,7 @@
   <view class="brand">
     <view class="logo">纸<text class="em">速</text>打</view>
     <view class="slogan">一分钟，打好一张练习纸</view>
-    <view class="ver">当前版本 v1.0.0</view>
+    <view class="ver">当前版本 {{currentVersion}}</view>
   </view>
 
   <!-- 更新历史 -->

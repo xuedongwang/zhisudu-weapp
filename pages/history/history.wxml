@@ -1,0 +1,41 @@
+<!-- pages/history/history.wxml -->
+<view class="page">
+  <!-- 统计卡：累计张数 + 常用纸型（复访的沉淀感来源） -->
+  <view class="stat-card card" wx:if="{{total}}">
+    <view class="stat-line">
+      <text class="stat-num">{{total}}</text>
+      <text class="stat-unit">张</text>
+      <text class="stat-label">累计导出</text>
+    </view>
+    <view class="stat-top" wx:if="{{topText}}">常用：{{topText}}</view>
+  </view>
+
+  <!-- 历史流水 -->
+  <block wx:if="{{history.length}}">
+    <view class="sec-title">全部记录<text class="more">保留最近 {{kept}}/{{limitNum}} 条</text></view>
+    <view class="card">
+      <view class="his-item" wx:for="{{history}}" wx:key="id">
+        <view class="hicon">
+          <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
+        </view>
+        <view class="hinfo">
+          <view class="hname">{{item.title}}</view>
+          <view class="hmeta">{{item.sub}}</view>
+        </view>
+        <view class="hbtn" data-index="{{index}}" bindtap="reuse" hover-class="hbtn-hover">再来一张</view>
+      </view>
+    </view>
+
+    <button class="btn btn-danger-outline" bindtap="clearAll" hover-class="none">清空打印历史</button>
+    <view class="foot-note">仅记录本机导出，卸载或清理小程序数据后会被清除</view>
+  </block>
+
+  <!-- 空态 -->
+  <view class="card empty" wx:else>
+    <view>还没有打印记录</view>
+    <view class="empty-sub">导出一次图片后，这里会记下你印过的每一张</view>
+    <button class="btn btn-primary btn-go" bindtap="goHome" hover-class="none">去生成一张</button>
+  </view>
+
+  <view style="height: 40rpx;" />
+</view>

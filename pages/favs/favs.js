@@ -3,7 +3,9 @@
 
 const papers = require('../../utils/papers')
 const store = require('../../utils/store')
+const sync = require('../../utils/sync')
 const thumbs = require('../../utils/thumbs')
+const track = require('../../utils/track')
 
 Page({
   data: {
@@ -11,7 +13,25 @@ Page({
   },
 
   onShow() {
+    track.pageView('favs')
     this._refresh()
+    // 跨设备收藏要立刻可见（同步在 app.onLaunch 发起，晚于本页渲染）
+    this._offSync = sync.onSynced(() => this._refresh())
+  },
+
+  onHide() {
+    this._unwatchSync()
+  },
+
+  onUnload() {
+    this._unwatchSync()
+  },
+
+  _unwatchSync() {
+    if (this._offSync) {
+      this._offSync()
+      this._offSync = null
+    }
   },
 
   _refresh() {
@@ -28,6 +48,7 @@ Page({
 
   openConfig(e) {
     const type = e.currentTarget.dataset.type
+    track.report('paper_select', { paper_type: type, source: 'fav' })
     wx.navigateTo({ url: `/pages/config/config?type=${type}` })
   },
 

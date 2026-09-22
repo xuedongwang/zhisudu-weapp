@@ -105,11 +105,11 @@
 .rtime { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
 .rbtn {
   flex: none;
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: var(--primary);
   background: var(--primary-weak);
-  border-radius: 28rpx;
-  padding: 0 24rpx;
-  line-height: 56rpx;
+  border-radius: 22rpx;
+  padding: 0 18rpx;
+  line-height: 46rpx;
   font-weight: 600;
 }

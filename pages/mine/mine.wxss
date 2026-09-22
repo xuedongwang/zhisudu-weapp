@@ -69,6 +69,16 @@
   font-weight: 500;
   font-size: 28rpx;
 }
+/* 资料锁定后：昵称纯文本展示（视觉与 nick-input 一致，但不可编辑） */
+.nick-text {
+  font-size: 32rpx;
+  font-weight: 700;
+  height: 56rpx;
+  line-height: 56rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .profile-sub {
   margin-top: 8rpx;
   display: flex;
@@ -90,6 +100,12 @@
   background: var(--primary-weak);
   border-radius: 14rpx;
   padding: 2rpx 12rpx;
+}
+
+/* 未同步到云端：中性灰，陈述事实而非报错 */
+.cloud-tag.tag-local {
+  color: #8C8776;
+  background: #F1EFE7;
 }
 
 /* ===== 模板列表（重排版：view 替代 button，避免默认按钮样式干扰） ===== */
@@ -127,6 +143,7 @@
   white-space: nowrap;
 }
 .tmeta { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
+/* 两个次操作按钮共用外形；描边统一 3rpx、box-sizing 保证宽度与高度对齐 */
 .tapply,
 .tdel {
   flex: none;
@@ -135,16 +152,19 @@
   padding: 0 24rpx;
   line-height: 52rpx;
   text-align: center;
+  box-sizing: border-box;
+  border: 3rpx solid transparent;
+  background: #fff;
 }
 .tapply {
   color: var(--primary);
-  border: 3rpx solid var(--primary);
-  background: #fff;
+  border-color: var(--primary);
   font-weight: 600;
 }
+/* 删除属危险操作：红字红描边（--danger），与「套用」的绿色主操作形成对称的主次区分 */
 .tdel {
-  color: var(--sub);
-  background: #F0EEE8;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 .tbtn-hover { opacity: 0.7; }
 
@@ -178,3 +198,7 @@
 .mval { font-size: 23rpx; color: var(--sub); flex: none; }
 .marr { width: 28rpx; height: 28rpx; flex: none; }
 .item-hover { background: #FAFAF7; }
+
+/* 危险操作行（清除我的资料）：只让文字与图标走危险色，不整行铺红底——
+   它属于低频的不可恢复操作，不该在视觉上比「关于」更抢眼（防误触） */
+.menu-item.danger .mtext { color: var(--danger); }

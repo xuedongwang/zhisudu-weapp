@@ -8,16 +8,20 @@
         <image class="avatar-icon" src="{{icons.user}}" mode="aspectFit" />
         <view class="avatar-tip">设置微信头像</view>
       </view>
-      <!-- 透明按钮覆盖层：提供 chooseAvatar 能力，不影响布局 -->
-      <button class="overlay-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
+      <!-- 透明按钮覆盖层：仅在资料未锁定（头像/昵称未填齐）时提供 chooseAvatar 能力 -->
+      <button wx:if="{{!profileLocked}}" class="overlay-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
     </view>
     <view class="profile-info">
-      <input class="nick-input" type="nickname" placeholder="点击填写昵称（可一键填入微信昵称）"
+      <!-- 锁定后昵称为纯文本展示，不可编辑 -->
+      <view wx:if="{{profileLocked}}" class="nick-text">{{profile.nickname}}</view>
+      <input wx:else class="nick-input" type="nickname" placeholder="点击填写昵称（可一键填入微信昵称）"
              placeholder-class="nick-ph"
              value="{{profile.nickname}}" bindblur="onNickname" bindconfirm="onNickname" />
       <view class="profile-sub">
         <text class="sub-text">模板 {{templates.length}}/{{tplLimit}} · 收藏 {{favCount}} 个</text>
-        <text wx:if="{{cloudReady}}" class="cloud-tag">已同步云端</text>
+        <!-- 同步状态：以「是否真的读到云端记录」为准，不再用 cloudReady（只代表云能力已初始化） -->
+        <text wx:if="{{cloudSynced}}" class="cloud-tag">已同步云端</text>
+        <text wx:elif="{{cloudReady}}" class="cloud-tag tag-local">仅本机保存</text>
       </view>
     </view>
   </view>
@@ -30,8 +34,8 @@
         <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
       </view>
       <view class="tinfo">
-        <view class="tname">{{item.name}}</view>
-        <view class="tmeta">{{item.paperName}} · {{item.desc}}</view>
+        <view class="tname">{{item.title}}</view>
+        <view class="tmeta">{{item.sub}}</view>
       </view>
       <view class="tapply" data-id="{{item.id}}" data-type="{{item.type}}" bindtap="applyTpl" hover-class="tbtn-hover">套用</view>
       <view class="tdel" data-id="{{item.id}}" bindtap="deleteTpl" hover-class="tbtn-hover">删除</view>
@@ -46,6 +50,12 @@
       <image class="micon" src="{{icons.starLine}}" mode="aspectFit" />
       <text class="mtext">我的收藏</text>
       <text class="mval">{{favCount}} 个</text>
+      <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
+    </view>
+    <view class="menu-item" bindtap="goHistory" hover-class="item-hover">
+      <image class="micon" src="{{icons.clock}}" mode="aspectFit" />
+      <text class="mtext">打印历史</text>
+      <text class="mval">{{hisTotal ? hisTotal + ' 张' : '暂无'}}</text>
       <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
     </view>
     <view class="menu-item" hover-class="item-hover">
@@ -63,7 +73,15 @@
     <view class="menu-item" bindtap="goAbout" hover-class="item-hover">
       <image class="micon" src="{{icons.info}}" mode="aspectFit" />
       <text class="mtext">关于纸速打</text>
-      <text class="mval">v1.0.0</text>
+      <text class="mval">{{appVersion}}</text>
+      <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
+    </view>
+    <!-- 清除我的资料（v1.1.3）：v1.1.2 起头像昵称上云，必须给用户删除途径。
+         放在菜单最后一位——低频且不可恢复，避免误触 -->
+    <view class="menu-item danger" bindtap="clearMyProfile" hover-class="item-hover">
+      <image class="micon" src="{{icons.trash}}" mode="aspectFit" />
+      <text class="mtext">清除我的资料</text>
+      <text class="mval">{{profile.avatar || profile.nickname ? '云端 + 本机' : '暂无资料'}}</text>
       <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
     </view>
   </view>

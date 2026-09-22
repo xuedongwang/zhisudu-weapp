@@ -61,12 +61,21 @@ page {
 
 /* 按钮 */
 .btn {
+  /* 固定高度 + flex 居中，替代仅靠 line-height 撑高：
+     文案偏长换行时 line-height 方案会让按钮高度翻倍（导出页历史问题） */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  white-space: nowrap; /* 锁死不换行，超长由 overflow 裁切，绝不撑高 */
+  overflow: hidden;
   border: none;
   border-radius: 24rpx;
   font-size: 32rpx;
   font-weight: 600;
-  line-height: 96rpx;
-  text-align: center;
+  line-height: 1.2;
 }
 .btn::after { border: none; }
 .btn-primary {

@@ -5,6 +5,7 @@
     "pages/success/success",
     "pages/mine/mine",
     "pages/favs/favs",
+    "pages/history/history",
     "pages/about/about"
   ],
   "window": {

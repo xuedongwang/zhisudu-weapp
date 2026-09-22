@@ -1,14 +1,19 @@
 // pages/home/home.js
-// 首页：收藏置顶 + 儿童场景纸分组 + 最近生成记录（PRD FR-01/10/11）
+// 首页：收藏置顶 + 纸型分类分组 + 最近生成记录（PRD FR-01/10/11/17/18）
+//
+// v1.1：纸型从 8 种增至 12 种，原先把所有纸型塞进一个标题写死的「儿童场景纸」区块已不成立
+//（新增了坐标纸、五线谱、康奈尔笔记、周计划等中学与成人向纸型），改为按 papers.CATEGORIES 分组。
 
 const papers = require('../../utils/papers')
 const store = require('../../utils/store')
+const sync = require('../../utils/sync')
 const thumbs = require('../../utils/thumbs')
+const track = require('../../utils/track')
 
 function fmtTime(ts) {
   const d = new Date(ts)
   const now = new Date()
-  const pad = (n) => (n < 10 ? '0' + n : '' + n)
+  const pad = (n) => (n < 10 ? '0' + n : String(n))
   const sameDay = d.toDateString() === now.toDateString()
   if (sameDay) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
@@ -17,26 +22,56 @@ function fmtTime(ts) {
 Page({
   data: {
     favs: [],      // 收藏的纸型 [{key, name}]
-    papers: [],    // 8 种纸型 [{key, name, desc, thumb}]
-    recent: [],    // 最近记录 [{type, name, desc, timeText, thumb, params}]
+    groups: [],    // 纸型分类 [{key, name, papers:[{key,name,desc,thumb}]}]
+    total: 0,      // 纸型总数
+    recent: [],    // 最近记录 [{params, title, sub, timeText, thumb}]
+    hisTotal: 0,   // 累计导出张数（打印历史页同源，用于区块标题右侧与入口）
   },
 
   onShow() {
+    track.pageView('home')
     this._buildPapers()
-    this._buildFavs()
-    this._buildRecent()
+    this._refreshData()
+    // 云端拉回来的收藏与最近记录要**立刻**可见：同步在 app.onLaunch 发起，
+    // 返回时间晚于本页首次渲染，所以注册一次「同步完成」回调重读
+    this._offSync = sync.onSynced(() => this._refreshData())
   },
 
-  // 8 种纸型卡片（缩略图异步生成后回填）
+  onHide() {
+    this._unwatchSync()
+  },
+
+  onUnload() {
+    this._unwatchSync()
+  },
+
+  // 取消同步回调：避免回调落在已隐藏/已卸载的页面上
+  _unwatchSync() {
+    if (this._offSync) {
+      this._offSync()
+      this._offSync = null
+    }
+  },
+
+  // 收藏行 + 最近记录 + 累计张数三处同源本机数据，一处刷新即可覆盖
+  _refreshData() {
+    this._buildFavs()
+    this._buildRecent()
+    this.setData({ hisTotal: store.getHistoryStats().total })
+  },
+
+  // 纸型卡片：按分类分组，缩略图异步生成后回填
   _buildPapers() {
-    const list = Object.keys(papers.PAPERS).map((key) => {
-      const p = papers.PAPERS[key]
-      return { key, name: p.name, desc: p.desc, thumb: '' }
+    const groups = papers.groupedPapers()
+    this.setData({
+      groups,
+      total: groups.reduce((n, g) => n + g.papers.length, 0),
     })
-    this.setData({ papers: list })
-    list.forEach((item, idx) => {
-      thumbs.ensureThumb(item.key).then((path) => {
-        if (path) this.setData({ [`papers[${idx}].thumb`]: path })
+    groups.forEach((g, gi) => {
+      g.papers.forEach((item, pi) => {
+        thumbs.ensureThumb(item.key).then((path) => {
+          if (path) this.setData({ [`groups[${gi}].papers[${pi}].thumb`]: path })
+        })
       })
     })
   },
@@ -45,29 +80,25 @@ Page({
   _buildFavs() {
     const favKeys = store.getFavs()
     this.setData({
-      favs: favKeys.map((key) => ({ key, name: papers.PAPERS[key].name })),
+      favs: favKeys.filter((k) => papers.PAPERS[k]).map((k) => ({ key: k, name: papers.PAPERS[k].name })),
     })
   },
 
-  // 最近生成记录（最多 10 条）
+  // 最近生成记录（最多 10 条）：整页参数复用入口，支持多区块版面
   _buildRecent() {
     const list = store.getRecent().map((r) => {
-      const p = papers.PAPERS[r.type]
-      const parts = [p.cell.label + r.params.cell + 'mm']
-      if (p.hasCols) parts.push(r.params.cols + ' 栏')
-      parts.push(r.params.orient === 'l' ? '横向' : '纵向')
+      const d = papers.describePage(r.params)
       return {
-        type: r.type,
         params: r.params,
-        name: p.name,
-        desc: parts.join(' · '),
-        timeText: fmtTime(r.time),
+        type: r.params.blocks[0].type,
+        title: d.title,
+        sub: `${d.sub} · ${fmtTime(r.time)}`,
         thumb: '',
       }
     })
     this.setData({ recent: list })
     list.forEach((item, idx) => {
-      thumbs.ensureThumb(item.type).then((path) => {
+      thumbs.ensurePageThumb(item.params).then((path) => {
         if (path) this.setData({ [`recent[${idx}].thumb`]: path })
       })
     })
@@ -85,15 +116,35 @@ Page({
 
   openConfig(e) {
     const type = e.currentTarget.dataset.type
+    const source = e.currentTarget.dataset.source || 'group'
+    track.report('paper_select', { paper_type: type, source })
     wx.navigateTo({ url: `/pages/config/config?type=${type}` })
   },
 
-  // 最近记录一键复用（携带完整参数）
+  // 最近记录一键复用（携带完整整页参数，多区块版面也能还原）
   reuseRecent(e) {
     const idx = e.currentTarget.dataset.index
     const item = this.data.recent[idx]
     if (!item) return
+    track.report('paper_select', { paper_type: item.type, source: 'recent' })
+    track.report('template_reuse', { paper_type: item.type })
     const params = encodeURIComponent(JSON.stringify(item.params))
     wx.navigateTo({ url: `/pages/config/config?type=${item.type}&params=${params}` })
+  },
+
+  // 打印历史（FR-16）：本区块只列最近 10 条参数复用，完整流水与累计张数在历史页
+  goHistory() {
+    wx.navigateTo({ url: '/pages/history/history' })
+  },
+
+  // 转发卡片（FR-15）：不定义时微信会退回「页面截图 + 页面标题」，卡片不可控。
+  // 此处只定义「发送给好友」；朋友圈（onShareTimeline）打开的是单页模式，
+  // 该模式下 tabBar 与 navigateTo 均不可用，首页会变成"点不动的死页"，故本期不做。
+  onShareAppMessage() {
+    track.report('share_click', { page_name: 'home' })
+    return {
+      title: '纸速打 · 免费打印田字格 / 米字格 / 口算纸 / 笔记纸',
+      path: '/pages/home/home',
+    }
   },
 })

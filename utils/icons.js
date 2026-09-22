@@ -10,6 +10,7 @@ const INK = '#2B2B28'
 const SUB = '#8A897F'
 const AMBER = '#F5A623'
 const GREEN = '#0E8A6D'
+const DANGER = '#D9534F'
 
 const ICONS = {
   // 收藏（实心星）
@@ -22,10 +23,14 @@ const ICONS = {
   info: svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="${SUB}" stroke-width="1.8"/><circle cx="12" cy="8" r="1.2" fill="${SUB}"/><path d="M12 11.5v6" stroke="${SUB}" stroke-width="1.8" stroke-linecap="round"/></svg>`),
   // 客服（耳麦）
   headset: svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="${GREEN}" stroke-width="1.8" stroke-linecap="round" d="M4 13a8 8 0 0 1 16 0"/><rect x="3" y="12.5" width="4" height="6" rx="2" fill="${GREEN}"/><rect x="17" y="12.5" width="4" height="6" rx="2" fill="${GREEN}"/><path fill="none" stroke="${GREEN}" stroke-width="1.8" stroke-linecap="round" d="M19 18.5a4 4 0 0 1-4 2.5h-2"/></svg>`),
+  // 打印历史（时钟）
+  clock: svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="${GREEN}" stroke-width="1.8"/><path fill="none" stroke="${GREEN}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 7.2V12l3.4 2.1"/></svg>`),
   // 右箭头
   chevron: svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="#C9C7BD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>`),
   // 用户（我的页占位头像）
   user: svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5" fill="none" stroke="#FFFFFF" stroke-width="1.8"/><path fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" d="M5.5 19c1.2-3 3.6-4.5 6.5-4.5s5.3 1.5 6.5 4.5"/></svg>`),
+  // 清除资料（垃圾桶，危险色）
+  trash: svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="${DANGER}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4.5 7h15M9.5 7V5.6c0-.9.7-1.6 1.6-1.6h1.8c.9 0 1.6.7 1.6 1.6V7"/><path fill="none" stroke="${DANGER}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6.6 7l.85 11.5c.07 1 .9 1.8 1.9 1.8h5.3c1 0 1.83-.8 1.9-1.8L17.4 7"/><path fill="none" stroke="${DANGER}" stroke-width="1.8" stroke-linecap="round" d="M10.4 10.6v6M13.6 10.6v6"/></svg>`),
 }
 
 module.exports = { ICONS }

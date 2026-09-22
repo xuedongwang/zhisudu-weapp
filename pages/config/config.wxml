@@ -1,9 +1,20 @@
 <!-- pages/config/config.wxml -->
 <!-- 使用原生页面滚动（不用 scroll-view），吸底栏 fixed，保证任何机型都能正常滚动 -->
+
+<!-- 分享落地承接（FR-15.8）：好友点开分享卡片直达本页时，说明「这张纸是别人配好的」，
+     否则用户会以为是自己上次的设置或系统默认，分享的打动点就丢了 -->
+<view class="share-tip" wx:if="{{fromShare && !tipClosed}}">
+  <view class="st-body">
+    <view class="st-title">朋友分享给你的{{layoutText}}配置</view>
+    <view class="st-sub">参数已填好，可直接导出打印</view>
+  </view>
+  <view class="st-close" bindtap="closeShareTip" hover-class="st-close-hover">✕</view>
+</view>
+
 <view class="preview-area">
   <!-- 尺寸标签独立一行（右对齐），不与 canvas 重叠：iOS 真机 canvas 原生层会盖住重叠的 view -->
   <view class="stage-caption">
-    <view class="size-tag">A4 · {{orient === 'l' ? '横向' : '纵向'}}</view>
+    <view class="size-tag">{{sizeText}} · {{layoutText}} · {{orientText}}</view>
   </view>
   <view class="paper-stage">
     <canvas type="2d" id="preview" class="preview-canvas"
@@ -13,14 +24,44 @@
 
 <view class="params-wrap">
   <view class="card param-card">
-    <!-- 尺寸（本期 A4 全精度，A5/B5 为缩放变体，PRD FR-02.1） -->
+    <!-- 纸张规格（FR-17） -->
     <view class="prow">
-      <view class="plabel"><text class="b">纸张尺寸</text></view>
+      <view class="plabel"><text class="b">纸张</text></view>
       <view class="chips">
-        <view class="chip on">A4</view>
-        <view class="chip dis">A5</view>
-        <view class="chip dis">B5</view>
+        <view class="chip {{size === item.key ? 'on' : ''}}"
+              wx:for="{{sizeOptions}}" wx:key="key"
+              data-v="{{item.key}}" bindtap="onSize">{{item.name}}</view>
       </view>
+    </view>
+
+    <!-- 版面划分（FR-18）：一张纸切成几个区块，每区独立选纸型 -->
+    <view class="prow">
+      <view class="plabel"><text class="b">版式</text><text class="pval">{{layoutText}}</text></view>
+      <view class="chips">
+        <view class="chip {{layout === item.key ? 'on' : ''}}"
+              wx:for="{{layoutOptions}}" wx:key="key"
+              data-v="{{item.key}}" bindtap="onLayout">{{item.name}}</view>
+      </view>
+    </view>
+
+    <!-- 区块选择：仅多区块时出现，决定下方「纸型 / 格宽」作用于哪一格 -->
+    <view class="prow" wx:if="{{multi}}">
+      <view class="plabel"><text class="b">编辑区块</text><text class="pval">{{active + 1}} / {{blocks.length}}</text></view>
+      <view class="chips">
+        <view class="chip {{active === index ? 'on' : ''}}"
+              wx:for="{{blocks}}" wx:key="index"
+              data-i="{{index}}" bindtap="onPickBlock">{{item.shortName}}</view>
+      </view>
+    </view>
+
+    <!-- 当前区块的纸型 -->
+    <view class="prow">
+      <view class="plabel"><text class="b">{{multi ? '区块纸型' : '纸型'}}</text><text class="pval">{{blockName}}</text></view>
+      <scroll-view scroll-x class="paper-row" enhanced show-scrollbar="{{false}}">
+        <view class="chip {{blockType === item.key ? 'on' : ''}}"
+              wx:for="{{paperOptions}}" wx:key="key"
+              data-v="{{item.key}}" bindtap="onBlockType">{{item.name}}</view>
+      </scroll-view>
     </view>
 
     <!-- 方向 -->
@@ -39,14 +80,22 @@
               activeColor="#0E8A6D" block-size="24" bindchanging="onCellInput" bindchange="onCellInput" />
     </view>
 
-    <!-- 边距（FR-02.5） -->
+    <!-- 纸型专属参数（FR-02.7）：康奈尔线索栏宽、周计划行数等 -->
+    <view class="prow" wx:for="{{extras}}" wx:key="key">
+      <view class="plabel"><text class="b">{{item.label}}</text><text class="pval">{{item.value}}{{item.unit}}</text></view>
+      <slider min="{{item.min}}" max="{{item.max}}" step="{{item.step}}" value="{{item.value}}"
+              activeColor="#0E8A6D" block-size="24" data-k="{{item.key}}"
+              bindchanging="onExtraInput" bindchange="onExtraInput" />
+    </view>
+
+    <!-- 边距（FR-02.5）：页面级，作用于整张纸 -->
     <view class="prow">
       <view class="plabel"><text class="b">边距</text><text class="pval">{{margin}} mm</text></view>
       <slider min="5" max="25" step="1" value="{{margin}}"
               activeColor="#0E8A6D" block-size="24" bindchanging="onMarginInput" bindchange="onMarginInput" />
     </view>
 
-    <!-- 线色（FR-02.4） -->
+    <!-- 线色（FR-02.4）：页面级，一页纸共用一种笔色 -->
     <view class="prow">
       <view class="plabel"><text class="b">线条颜色</text></view>
       <view class="swatches">
@@ -78,12 +127,12 @@
     </view>
   </view>
 
-  <view class="export-note">导出规格：A4 · 300DPI（2480×3508px）· 保存相册 / 微信发送</view>
+  <view class="export-note">导出规格：{{exportNote}}</view>
   <!-- 底部留白由 .params-wrap 的 padding-bottom 提供（含吸底栏高度与安全区） -->
 </view>
 
 <!-- 吸底操作栏 -->
 <view class="bottom-bar">
-  <button class="btn btn-plain btn-save" bindtap="onSaveTemplate" hover-class="none">存为模板</button>
+  <button class="btn btn-plain btn-save" bindtap="onSaveTemplate" hover-class="none">{{isFromTpl ? '更新模板' : '存为模板'}}</button>
   <button class="btn btn-primary btn-export" bindtap="onExport" disabled="{{exporting}}" hover-class="none">导出图片</button>
 </view>
