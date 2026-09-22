@@ -78,18 +78,20 @@
 .pdesc { font-size: 22rpx; color: var(--sub); margin-top: 4rpx; }
 
 /* 最近记录 */
-.recent-card { padding: 12rpx 28rpx; }
+.recent-card { padding: 8rpx 28rpx; }
 .recent-item {
   display: flex;
   align-items: center;
-  gap: 24rpx;
-  padding: 24rpx 0;
+  gap: 20rpx;
+  padding: 20rpx 0;
   border-bottom: 1rpx solid var(--line);
 }
 .recent-item:last-child { border-bottom: none; }
+
+/* 缩略图：A4 竖版比例；占位块与真图共用同一盒子，异步回填时行高不跳 */
 .ricon {
-  width: 64rpx;
-  height: 90rpx;
+  width: 72rpx;
+  height: 100rpx;
   border-radius: 10rpx;
   border: 1rpx solid var(--line);
   background: #FDFCFA;
@@ -100,6 +102,9 @@
   justify-content: center;
 }
 .ricon image { width: 100%; height: 100%; }
+.ricon-ph { width: 60%; height: 72%; background: #F2F0EA; border-radius: 6rpx; }
+
+/* 文字区：吃掉全部剩余宽度并自行打点，保证它不会被内容反向挤宽 */
 .rinfo { flex: 1; min-width: 0; }
 .rname {
   font-size: 28rpx;
@@ -109,28 +114,47 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.rtime { font-size: 22rpx; color: var(--sub); margin-top: 6rpx; line-height: 1.4; }
-/* 「再次生成」对齐全局 .btn 规范：flex 居中 + 高度固定（宽度由内容撑开 + padding），
-   不用 line-height 撑高（文案换行会把按钮高度翻倍，导出页历史问题）；
-   清 button 默认 margin 与 ::after 描边，否则浅色底上有一圈灰线、右缘也不贴齐 */
+/* 第二行规格描述（时间已按产品口径移除，不再占用横向空间）：
+   block 独占一行 + 单行 ellipsis，长文案裁自己，不推挤右侧按钮 */
+.rdesc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: var(--sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 「再次生成」自绘按钮：改用 view 实现，彻底弃用原生 button 组件。
+   原生 wx-button 内置 wx-button:not([size=mini]) 带 width:184px 与
+   margin-left/right:auto，另有 ::after 描边和内置 padding/line-height；
+   想让宽度仅由文案决定就必须逐条反覆盖，机型/基础库一变即失控。
+   view 零默认样式，宽度 = 文案 + padding，最稳；高度锁死（不用 line-height 撑高，
+   文案换行会把按钮高度翻倍，导出页历史问题） */
 .rbtn {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60rpx;
-  margin: 0;
-  padding: 0 24rpx; /* 宽度由内容撑开 + 适当 padding（用户 2026-09-23 最终口径：不用固定宽度） */
+  height: 56rpx;
+  padding: 0 24rpx;
   box-sizing: border-box;
+  border-radius: 28rpx;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   overflow: hidden;
-  border: none;
-  border-radius: 30rpx;
-  font-size: 23rpx;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--primary);
-  background: var(--primary-weak);
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
 }
-.rbtn::after { border: none; }
-.rbtn-hover { opacity: 0.75; transform: scale(0.96); }
+.rbtn-txt { line-height: 1; }
+/* 按压反馈自己给：胶囊反白到主色 + 轻微缩放下沉，替代原生 hover-class 的灰遮罩 */
+.rbtn-hover {
+  background: var(--primary);
+  color: #fff;
+  transform: scale(0.96);
+}

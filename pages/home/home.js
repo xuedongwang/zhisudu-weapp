@@ -10,21 +10,12 @@ const sync = require('../../utils/sync')
 const thumbs = require('../../utils/thumbs')
 const track = require('../../utils/track')
 
-function fmtTime(ts) {
-  const d = new Date(ts)
-  const now = new Date()
-  const pad = (n) => (n < 10 ? '0' + n : String(n))
-  const sameDay = d.toDateString() === now.toDateString()
-  if (sameDay) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 Page({
   data: {
     favs: [],      // 收藏的纸型 [{key, name}]
     groups: [],    // 纸型分类 [{key, name, papers:[{key,name,desc,thumb}]}]
     total: 0,      // 纸型总数
-    recent: [],    // 最近记录 [{params, title, sub, timeText, thumb}]
+    recent: [],    // 最近记录 [{params, type, title, desc, thumb}]
     hisTotal: 0,   // 累计导出张数（打印历史页同源，用于区块标题右侧与入口）
   },
 
@@ -92,7 +83,9 @@ Page({
         params: r.params,
         type: r.params.blocks[0].type,
         title: d.title,
-        sub: `${d.sub} · ${fmtTime(r.time)}`,
+        // 描述从原先与时间拼接的 sub 整串里拆出来单独成字段：拼好的一整串只能整行平铺，
+        // 长文案会一路顶到按钮；独立字段配合单行 ellipsis 自我收敛
+        desc: d.sub,
         thumb: '',
       }
     })

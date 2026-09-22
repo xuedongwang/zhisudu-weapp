@@ -39,14 +39,26 @@
     <view class="sec-title" wx:if="{{recent.length}}">最近生成<text class="more" style="padding: 12rpx 0 12rpx 24rpx;" bindtap="goHistory">{{hisTotal ? '共 ' + hisTotal + ' 张 ›' : '查看全部 ›'}}</text></view>
     <view class="card recent-card" wx:if="{{recent.length}}">
       <view class="recent-item" wx:for="{{recent}}" wx:key="index">
+        <!-- 缩略图：占位与真图共用同一盒子，图片回填时行高不跳 -->
         <view class="ricon">
           <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
+          <view wx:else class="ricon-ph" />
         </view>
+
+        <!-- 文字区：吃掉剩余宽度并自行打点，不向内挤压按钮 -->
         <view class="rinfo">
           <view class="rname">{{item.title}}</view>
-          <view class="rtime">{{item.sub}}</view>
+          <view class="rdesc">{{item.desc}}</view>
         </view>
-        <button class="rbtn" data-index="{{index}}" bindtap="reuseRecent" hover-class="rbtn-hover">再次生成</button>
+
+        <!-- 「再次生成」自绘按钮：用 view 实现，不用原生 button 组件。
+             原生 wx-button 内置 wx-button:not([size=mini]) { width:184px; margin:auto }
+             加上 ::after 描边与内置 padding/line-height，想让宽度仅由文案决定就得逐条反覆盖，
+             机型/基础库一变就失控；view 零默认样式，宽度收敛且可靠 -->
+        <view class="rbtn" data-index="{{index}}" bindtap="reuseRecent"
+              hover-class="rbtn-hover" hover-stay-time="120">
+          <text class="rbtn-txt">再次生成</text>
+        </view>
       </view>
     </view>
 
