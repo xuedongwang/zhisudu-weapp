@@ -19,6 +19,10 @@ App({
           traceUser: true,
         })
         this.globalData.cloudReady = true
+        // App.onLaunch 期间 getApp() 不可靠（官方明确不要在 App() 内部调用 getApp()），
+        // 而云同步恰在 onLaunch 发起——把实例交给 cloud.js，cloudReady 判据不再依赖
+        // getApp() 的时序，否则同步会在第一道闸门上静默退出（不报错、不拉取）。
+        require('./utils/cloud').bindApp(this)
       }
     } catch (e) {
       console.warn('[cloud] 初始化失败，云端功能降级为仅本地', e)

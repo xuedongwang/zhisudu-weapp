@@ -50,6 +50,19 @@ const MAX_PUSH_BYTES = 400 * 1024
 // 热启动重试节流：距上次同步成功不足 5 分钟就不再跑一轮（冷启动必然首次执行）
 const RETRY_INTERVAL_MS = 5 * 60 * 1000
 
+// ---------- 诊断日志（仅开发版/体验版输出，正式版完全静默） ----------
+// 正常同步依然静默（v1.2.0 的设计决定不变）；但在开发者工具里排查「云端有数据、
+// 本机拉不回来」这类问题时，需要能看到同步走到了哪一步、卡在哪一环。
+function dbg(...args) {
+  try {
+    const info = wx.getAccountInfoSync()
+    const v = info && info.miniProgram && info.miniProgram.envVersion
+    if (v !== 'release') console.info('[sync]', ...args)
+  } catch (e) {
+    // 诊断日志绝不能影响主流程
+  }
+}
+
 // ---------- 同步元信息（本机） ----------
 
 function readMeta() {
@@ -96,6 +109,14 @@ function localValue(field) {
   } catch (e) {
     return f.empty
   }
+}
+
+/** 本机五个同步字段是否任一非空（判断「本机有没有需要保护/需要推的数据」） */
+function hasAnyLocal() {
+  return SYNC_FIELD_NAMES.some((f) => {
+    const v = localValue(f)
+    return Array.isArray(v) ? v.length > 0 : Number(v) > 0
+  })
 }
 
 function writeLocal(field, value) {
@@ -347,20 +368,24 @@ function finish(ok) {
 
 async function run() {
   if (!cloud.cloudReady()) {
+    dbg('跳过：云能力未就绪（wx.cloud 未初始化或 App 实例未就绪）')
     finish(false)
     return { ok: false, reason: 'cloud_unavailable' }
   }
 
-  const openid = await cloud.getOpenid()
+  let openid = await cloud.getOpenid()
   if (!openid) {
+    dbg('跳过：取不到 openid（login 云函数未部署或不可用，见上方 [cloud] 日志）')
     writeMeta({ lastSyncOk: false })
     finish(false)
     return { ok: false, reason: 'no_openid' }
   }
 
+  const queryMine = (oid) => db().collection(COLLECTION).where({ _openid: oid }).limit(1).get()
+
   let res = null
   try {
-    res = await db().collection(COLLECTION).where({ _openid: openid }).limit(1).get()
+    res = await queryMine(openid)
   } catch (e) {
     console.warn('[sync] 云端数据读取失败（请检查 userdata 集合是否创建、权限是否为「仅创建者可读写」）', e)
     writeMeta({ lastSyncOk: false })
@@ -368,16 +393,53 @@ async function run() {
     return { ok: false, reason: 'cloud_query_failed' }
   }
 
-  const doc = (res && res.data && res.data[0]) || null
+  let doc = (res && res.data && res.data[0]) || null
+  dbg('按 openid 查询云端文档：', doc ? `找到 ${doc._id}` : '无记录')
+
+  // ---- openid 自检（2026-09-22 补）：缓存 openid 可能已过期 ----
+  // openid 缓存在本机 storage，而「切换微信登录账号」不清 storage（开发者工具里
+  // 切账号是常规操作）——缓存的 openid 指向旧账号，按它查云端只会查到旧账号的
+  // 名下（通常是空的），表现即「云端有数据、本机永远拉不回来」且不报错。
+  // 判据（同时满足才触发，**每个 meta 生命周期只做一次**）：
+  //   已初始化过 + 本机五个字段全空 + 按缓存 openid 查不到云端文档。
+  //   真实用户的常态不可能长期「两侧都空」，最常见解释就是 openid 不是当前账号的。
+  if (!doc && !hasAnyLocal() && readMeta().initialized && !readMeta().openidChecked) {
+    writeMeta({ openidChecked: true })
+    dbg('本机与云端（按缓存 openid）均为空 → 强制重取 openid 自检一次')
+    cloud.invalidateOpenid()
+    let fresh = null
+    try {
+      fresh = await cloud.getOpenid()
+    } catch (e) {
+      fresh = null
+    }
+    if (fresh && fresh !== openid) {
+      dbg('openid 已变化（缓存过期属实）：', `旧 ${openid.slice(0, 8)}… → 新 ${fresh.slice(0, 8)}…`)
+      try {
+        const res2 = await queryMine(fresh)
+        const doc2 = (res2 && res2.data && res2.data[0]) || null
+        if (doc2) {
+          dbg('换用新 openid 后查到了云端文档，继续正常同步')
+          openid = fresh
+          doc = doc2
+        } else {
+          dbg('新 openid 名下也无记录，按「云端暂无数据」继续')
+        }
+      } catch (e) {
+        dbg('自检重查失败，按原结果继续', e)
+      }
+    } else {
+      dbg('openid 未变化，本机与云端确实都是空的')
+    }
+  }
+
   const meta = readMeta()
   const pending = meta.pending || {}
 
   // ---- 情形一：云端还没有本人的文档 ----
   if (!doc) {
-    const hasLocal = SYNC_FIELD_NAMES.some((f) => {
-      const v = localValue(f)
-      return Array.isArray(v) ? v.length > 0 : Number(v) > 0
-    })
+    const hasLocal = hasAnyLocal()
+    dbg(`情形一（云端无本人文档）：本机${hasLocal ? '有数据，准备推送' : '无数据'}`)
     // docId 先清空（缓存的 docId 可能指向已被删除的文档）
     writeMeta({ docId: '' })
     if (hasLocal) {
@@ -403,9 +465,13 @@ async function run() {
 
   // ---- 情形二：本机首次遇到云端已有数据 → 并集合并 ----
   if (!meta.initialized) {
+    let pulled = 0
     SYNC_FIELD_NAMES.forEach((f) => {
-      writeLocal(f, mergeFirst(f, localValue(f), doc[f]))
+      const merged = mergeFirst(f, localValue(f), doc[f])
+      if (Array.isArray(merged) ? merged.length > 0 : Number(merged) > 0) pulled++
+      writeLocal(f, merged)
     })
+    dbg(`情形二（首次并集合并）：${pulled}/5 个字段合并后有数据`)
     writeMeta({ initialized: true })
     const r = await pushFields(SYNC_FIELD_NAMES)
     writeMeta({ lastSyncAt: Date.now(), lastSyncOk: !!r.ok })
@@ -415,6 +481,7 @@ async function run() {
 
   // ---- 情形三：常态化。逐字段定方向 ----
   const needPush = []
+  let pulledFields = []
   SYNC_FIELD_NAMES.forEach((f) => {
     if (pending[f]) {
       needPush.push(f)   // 本机有未推送成功的改动 → 本机优先，不能被云端覆盖
@@ -423,7 +490,11 @@ async function run() {
     // 云端没有这个字段（老文档，或以后新增字段）→ 保留本机，别用空值把它抹掉
     if (doc[f] === undefined || doc[f] === null) return
     writeLocal(f, sanitize(f, doc[f]))
+    pulledFields.push(f)
   })
+  if (pulledFields.length || needPush.length) {
+    dbg(`情形三（常态同步）：拉取 [${pulledFields.join(',') || '无'}]，推送 [${needPush.join(',') || '无'}]`)
+  }
 
   let ok = true
   if (needPush.length) {

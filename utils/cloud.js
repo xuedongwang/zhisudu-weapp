@@ -46,9 +46,27 @@ const CLOUD_PREFIX = 'cloud://'
 // 删除操作必须把名下的记录都清掉，不能只删第一条。
 const MAX_DOCS = 20
 
+// App 实例引用：同步在 App.onLaunch 发起，而**官方文档明确不要在 App() 内部调用
+// getApp()**（此时实例不一定可用）——cloudReady() 若依赖 getApp()，同步会在
+// onLaunch 的第一道闸门上静默退出（不报错、不拉取、不推送）。由 app.js 在
+// onLaunch 第一时间 bindApp(this)，cloudReady 改为「getApp() 优先、实例引用兜底」。
+let _appRef = null
+
+function bindApp(app) {
+  _appRef = app
+}
+
 function cloudReady() {
   try {
-    return !!(wx.cloud && getApp() && getApp().globalData.cloudReady)
+    if (!wx.cloud) return false
+    let app = null
+    try {
+      app = typeof getApp === 'function' ? getApp() : null
+    } catch (e) {
+      app = null
+    }
+    app = app || _appRef
+    return !!(app && app.globalData && app.globalData.cloudReady)
   } catch (e) {
     return false
   }
@@ -131,6 +149,17 @@ function getOpenid() {
       console.warn('[cloud] 获取 openid 失败，请确认已部署 login 云函数', e)
       return null
     })
+}
+
+/**
+ * 清除 openid 本机缓存（只清 openid，**不动头像昵称**）。
+ * 为什么需要：openid 缓存随本机 storage 存活，而「切换微信登录账号」不会清 storage
+ * （开发者工具里切账号是常规操作）——缓存里的 openid 还是旧账号的，按它查云端
+ * 只会查到旧账号的（通常是空的）名下，表现即「云端有数据、本机永远拉不回来」。
+ * 清掉后下一次 getOpenid() 会重新调 login 云函数取当前账号的 openid。
+ */
+function invalidateOpenid() {
+  writeLocal({ openid: '' })
 }
 
 /**
@@ -444,5 +473,5 @@ async function clearProfile() {
 }
 
 module.exports = {
-  loadProfile, saveProfile, clearProfile, getOpenid, cloudReady, PROFILE_KEY,
+  loadProfile, saveProfile, clearProfile, getOpenid, cloudReady, bindApp, invalidateOpenid, PROFILE_KEY,
 }
