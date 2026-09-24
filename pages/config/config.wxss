@@ -148,3 +148,21 @@
 }
 .btn-save { flex: 0 0 220rpx; }
 .btn-export { flex: 1; }
+
+/* v1.4 自定义尺寸输入行 */
+.custom-size {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.cs-input {
+  width: 140rpx;
+  padding: 10rpx 16rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 10rpx;
+  font-size: 26rpx;
+  text-align: center;
+}
+.cs-x { color: var(--sub); font-size: 26rpx; }
+.cs-unit { color: var(--sub); font-size: 22rpx; }

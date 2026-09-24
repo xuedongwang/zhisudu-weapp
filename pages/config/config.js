@@ -147,7 +147,11 @@ Page({
     const paper = papers.PAPERS[cur.type]
     const size = papers.findSize(p.size)
     const layout = papers.findLayout(p.layout)
-    const px = papers.pixelSize(p.size, p.orient, 300)
+    const custom = { w: p.customW, h: p.customH }
+    // v1.4：像素按规格的基准 DPI 现算（A3 等固定 200DPI，不是降级）
+    const baseDpi = papers.dpiForSize(p.size)
+    const px = papers.pixelSize(p.size, p.orient, baseDpi, custom)
+    const sizeDesc = size.custom ? `自定义 ${p.customW}×${p.customH}mm` : size.name
 
     this.setData({
       size: p.size,
@@ -164,6 +168,11 @@ Page({
       wmText: p.wmText,
       wmAlpha: p.wmAlpha,
       wmAngle: p.wmAngle,
+      // v1.4 自定义尺寸
+      customW: p.customW,
+      customH: p.customH,
+      customMin: papers.CUSTOM_SIZE.min,
+      customMax: papers.CUSTOM_SIZE.max,
       blocks,
       active: this._active,
       multi: p.layout !== '1x1',
@@ -189,7 +198,7 @@ Page({
       orientText: p.orient === 'l' ? '横向' : '纵向',
       sizeText: size.name,
       layoutText: layout.name,
-      exportNote: `${size.name} · 300DPI（${px.w}×${px.h}px）· 保存相册 / 分享`,
+      exportNote: `${sizeDesc} · ${baseDpi}DPI（${px.w}×${px.h}px）· 保存相册 / 分享`,
     })
 
     wx.setNavigationBarTitle({
@@ -203,7 +212,7 @@ Page({
     // 页面左右留白 32rpx×2 + 纸张舞台内边距 20rpx×2 ≈ 104rpx
     const cssW = win.windowWidth - 52
     // 纸张比例跟着规格与方向走（原来写死 A4）
-    const mm = papers.pageSizeMm(this._params.size, this._params.orient)
+    const mm = papers.pageSizeMm(this._params.size, this._params.orient, { w: this._params.customW, h: this._params.customH })
     const cssH = cssW * (mm.h / mm.w)
     const dpr = Math.min(win.pixelRatio || 2, 3)
     this.setData({ pw: cssW, ph: cssH }, () => {
@@ -230,7 +239,7 @@ Page({
   _drawPreview() {
     if (!this._ctx) return
     const p = this._params
-    const mm = papers.pageSizeMm(p.size, p.orient)
+    const mm = papers.pageSizeMm(p.size, p.orient, { w: p.customW, h: p.customH })
     // 按「纸张宽度」定比例。原实现横向时误用 cssH 作基准，
     // 导致横向预览画布只有应有分辨率的 70%（均匀缩小后拉伸显示、偏糊），此处一并修正。
     const k = (this._cssW * this._dpr) / mm.w
@@ -273,6 +282,23 @@ Page({
     this._params.size = v
     this._syncView()
     this._initPreview() // 纸张比例变化，需重算画布尺寸
+  },
+  // v1.4 自定义尺寸：失焦（confirm）时落定，取整 + 立即夹取边界（与导出口径一致）后重算画布
+  onCustomW(e) {
+    track.reportParamChange(this._curType(), 'customW')
+    const v = Math.round(Number(e.detail.value))
+    this._params.customW = isNaN(v) ? papers.CUSTOM_SIZE.defW
+      : Math.min(Math.max(v, papers.CUSTOM_SIZE.min), papers.CUSTOM_SIZE.max)
+    this._syncView()
+    this._initPreview()
+  },
+  onCustomH(e) {
+    track.reportParamChange(this._curType(), 'customH')
+    const v = Math.round(Number(e.detail.value))
+    this._params.customH = isNaN(v) ? papers.CUSTOM_SIZE.defH
+      : Math.min(Math.max(v, papers.CUSTOM_SIZE.min), papers.CUSTOM_SIZE.max)
+    this._syncView()
+    this._initPreview()
   },
   onLayout(e) {
     const v = e.currentTarget.dataset.v

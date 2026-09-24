@@ -26,7 +26,9 @@ function posix(parts) {
 function thumbKey(raw) {
   const n = papers.normalizeParams(raw)
   const types = n.blocks.map((b) => b.type).join('-')
-  return `thumb_v${THUMB_VERSION}_${posix([n.size, n.orient, n.layout, types])}.png`
+  // v1.4：自定义尺寸的宽高进缓存键——同为 custom 但宽高不同的记录缩略图比例不同，不能共用
+  const sizePart = n.size === 'custom' ? `custom${n.customW}x${n.customH}` : n.size
+  return `thumb_v${THUMB_VERSION}_${posix([sizePart, n.orient, n.layout, types])}.png`
 }
 
 function filePathOf(key) {
@@ -61,7 +63,7 @@ function ensurePageThumb(raw) {
       },
       fail: () => {
         try {
-          const mm = papers.pageSizeMm(n.size, n.orient)
+          const mm = papers.pageSizeMm(n.size, n.orient, { w: n.customW, h: n.customH })
           const w = THUMB_W
           const h = Math.round(THUMB_W * (mm.h / mm.w))
           const off = wx.createOffscreenCanvas({ type: '2d', width: w, height: h })

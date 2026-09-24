@@ -19,13 +19,34 @@
 
 // ---------- 纸张规格（FR-17）----------
 // A4 与既有实现逐值一致（300DPI = 2480×3508），扩展规格按 mm×dpi/25.4 现算
+// v1.4 大尺寸：dpi 字段 = 该规格的**基准导出 DPI**（缺省 300）。
+//   Letter/Executive @300DPI 均在安全像素内（<3400px）；
+//   A3/B4/Legal/Tabloid 固定 200DPI——@200 时长边 ≤3400px，远离 iOS ~4096px 画布墙，
+//   这是 2026-09-24 用户拍板的「超限档自动 200DPI」策略，不是降级、是规格的固定档位。
 const SIZES = [
   { key: 'a4', name: 'A4', widthMm: 210, heightMm: 297, note: '打印店默认' },
   { key: 'k16', name: '16K', widthMm: 185, heightMm: 260, note: '作业本常用' },
   { key: 'b5', name: 'B5', widthMm: 176, heightMm: 250, note: '作业本常用' },
   { key: 'a5', name: 'A5', widthMm: 148, heightMm: 210, note: '半张 A4' },
+  { key: 'letter', name: 'Letter', widthMm: 215.9, heightMm: 279.4, note: '北美信纸' },
+  { key: 'executive', name: 'Executive', widthMm: 184.15, heightMm: 266.7, note: '办公便笺' },
+  { key: 'a3', name: 'A3', widthMm: 297, heightMm: 420, note: '海报拼图', dpi: 200 },
+  { key: 'b4', name: 'B4', widthMm: 250, heightMm: 353, note: '试卷常用', dpi: 200 },
+  { key: 'legal', name: 'Legal', widthMm: 215.9, heightMm: 355.6, note: '北美法律纸', dpi: 200 },
+  { key: 'tabloid', name: 'Tabloid', widthMm: 279.4, heightMm: 431.8, note: 'A3 近似', dpi: 200 },
+  // 自定义尺寸：宽高由页面级参数 customW/customH 给出（pageSizeMm 的第三个参数）
+  { key: 'custom', name: '自定义', custom: true, note: '自定宽高' },
 ]
 const DEFAULT_SIZE = 'a4'
+
+// 自定义尺寸边界（mm）：上限保证 300DPI 下单边 ≤ 4093px（4096 画布墙内）
+const CUSTOM_SIZE = { min: 50, max: 346, defW: 210, defH: 297 }
+
+// 规格的基准导出 DPI（exporter 以此为起始档，失败再向下降）
+function dpiForSize(sizeKey) {
+  const s = findSize(sizeKey)
+  return s.dpi || 300
+}
 
 // ---------- 版式（FR-18 单页多区块）----------
 // 命名按「行 × 列」，区块顺序为行优先（从左到右、从上到下）
@@ -53,11 +74,12 @@ function findSize(sizeKey) {
 }
 
 // 纸张 mm 尺寸（横向时宽高互换）
-function pageSizeMm(sizeKey, orient) {
+// custom: { w, h }——仅 sizeKey === 'custom' 时使用（自定义尺寸的宽高，单位 mm）
+function pageSizeMm(sizeKey, orient, custom) {
   const s = findSize(sizeKey)
-  return orient === 'l'
-    ? { w: s.heightMm, h: s.widthMm }
-    : { w: s.widthMm, h: s.heightMm }
+  const w = s.custom ? (custom && custom.w) || CUSTOM_SIZE.defW : s.widthMm
+  const h = s.custom ? (custom && custom.h) || CUSTOM_SIZE.defH : s.heightMm
+  return orient === 'l' ? { w: h, h: w } : { w, h }
 }
 
 /**
@@ -454,6 +476,8 @@ function defaultParams(key) {
     wmText: '',
     wmAlpha: WATERMARK.alphaDef,
     wmAngle: WATERMARK.angleDef,
+    customW: CUSTOM_SIZE.defW,
+    customH: CUSTOM_SIZE.defH,
     layout: DEFAULT_LAYOUT,
     blocks: [defaultBlock(key || 'tianzige')],
   }
@@ -512,6 +536,9 @@ function normalizeParams(raw, fallbackType) {
   const wmText = String(src.wmText == null ? '' : src.wmText).trim().slice(0, WATERMARK.textMax)
   const wmAlpha = Math.round(clampNum(src.wmAlpha, WATERMARK.alphaMin, WATERMARK.alphaMax, WATERMARK.alphaDef) * 100) / 100
   const wmAngle = Math.round(clampNum(src.wmAngle, WATERMARK.angleMin, WATERMARK.angleMax, WATERMARK.angleDef))
+  // v1.4 自定义尺寸：取整到 1mm；非 custom 规格时这两个值闲置但仍归一化（签名键序固定）
+  const customW = Math.round(clampNum(src.customW, CUSTOM_SIZE.min, CUSTOM_SIZE.max, CUSTOM_SIZE.defW))
+  const customH = Math.round(clampNum(src.customH, CUSTOM_SIZE.min, CUSTOM_SIZE.max, CUSTOM_SIZE.defH))
   // 旧结构必然是单区块，强制 1x1
   const layout = legacy ? DEFAULT_LAYOUT : findLayout(src.layout).key
 
@@ -529,7 +556,7 @@ function normalizeParams(raw, fallbackType) {
   while (blocks.length < need) blocks.push(normalizeBlock({ type: blocks[0].type }, blocks[0].type))
   if (blocks.length > need) blocks = blocks.slice(0, need)
 
-  return { size, orient, margin, color, style, weight, bgColor, bgTexture, border, wmText, wmAlpha, wmAngle, layout, blocks }
+  return { size, orient, margin, color, style, weight, bgColor, bgTexture, border, wmText, wmAlpha, wmAngle, customW, customH, layout, blocks }
 }
 
 // 去重签名：固定键序，保证同一配置不同来源得到同一签名
@@ -551,6 +578,7 @@ function signature(raw) {
     color: n.color, style: n.style, weight: n.weight,
     bgColor: n.bgColor, bgTexture: n.bgTexture, border: n.border,
     wmText: n.wmText, wmAlpha: n.wmAlpha, wmAngle: n.wmAngle,
+    customW: n.customW, customH: n.customH,
     layout: n.layout, blocks,
   })
 }
@@ -630,6 +658,8 @@ function describePage(raw) {
   const s = findSize(n.size)
   const l = findLayout(n.layout)
   const orientText = n.orient === 'l' ? '横' : '纵'
+  // 自定义尺寸没有固定名，展示实际宽高（如「200×280mm纵」）
+  const sizeName = s.custom ? `${n.customW}×${n.customH}mm` : s.name
 
   let title
   if (n.layout === '1x1') {
@@ -641,7 +671,7 @@ function describePage(raw) {
     title = `${l.name} · ${names.join(' / ')}`
   }
 
-  const sub = [`${s.name}${orientText}`]
+  const sub = [`${sizeName}${orientText}`]
   if (n.layout !== '1x1') sub.push(`${n.blocks.length} 区`)
   if (n.blocks[0] && PAPERS[n.blocks[0].type].hasCols) sub.push(`${n.blocks[0].cols}栏`)
   const cn = colorName(n.color)
@@ -659,7 +689,7 @@ function describePage(raw) {
   if (n.wmText) sub.push('水印')
   if (n.weight !== WEIGHT.def) sub.push(n.weight > WEIGHT.def ? `粗×${n.weight}` : `细×${n.weight}`)
 
-  return { title, sub: sub.join(' · '), size: s, layout: l }
+  return { title, sub: sub.join(' · '), size: s.custom ? { ...s, name: sizeName } : s, layout: l }
 }
 
 // 模板规范名（列表内可区分：含规格与方向）
@@ -681,8 +711,8 @@ function groupedPapers() {
 }
 
 // 导出规格文案（像素按 dpi 现算）
-function pixelSize(sizeKey, orient, dpi) {
-  const mm = pageSizeMm(sizeKey, orient)
+function pixelSize(sizeKey, orient, dpi, custom) {
+  const mm = pageSizeMm(sizeKey, orient, custom)
   const k = dpi / 25.4
   return { w: Math.round(mm.w * k), h: Math.round(mm.h * k) }
 }
@@ -690,8 +720,9 @@ function pixelSize(sizeKey, orient, dpi) {
 module.exports = {
   PAPERS, CATEGORIES, COLORS, STYLES, SIZES, LAYOUTS, A4,
   WEIGHT, BG_COLORS, BG_TEXTURES, BORDERS, WATERMARK, THEMES,
+  CUSTOM_SIZE,
   DEFAULT_SIZE, DEFAULT_LAYOUT, BLOCK_GAP_MM,
-  blockCount, findLayout, findSize, pageSizeMm, layoutBoxes,
+  blockCount, findLayout, findSize, pageSizeMm, layoutBoxes, dpiForSize,
   defaultBlock, defaultParams, normalizeBlock, normalizeParams, normalizeEntry, signature,
   describeBlock, describePage, templateName, groupedPapers, pixelSize,
 }

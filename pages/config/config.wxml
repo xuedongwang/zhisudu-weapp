@@ -24,13 +24,24 @@
 
 <view class="params-wrap">
   <view class="card param-card">
-    <!-- 纸张规格（FR-17） -->
+    <!-- 纸张规格（FR-17；v1.4 扩至 10 种规格 + 自定义尺寸） -->
     <view class="prow">
       <view class="plabel"><text class="b">纸张</text></view>
       <view class="chips">
         <view class="chip {{size === item.key ? 'on' : ''}}"
               wx:for="{{sizeOptions}}" wx:key="key"
               data-v="{{item.key}}" bindtap="onSize">{{item.name}}</view>
+      </view>
+    </view>
+
+    <!-- 自定义尺寸（v1.4）：仅选中「自定义」时出现；单边 50~346mm（300DPI 下 ≤4093px，画布墙内） -->
+    <view class="prow" wx:if="{{size === 'custom'}}">
+      <view class="plabel"><text class="b">自定义尺寸</text><text class="pval">{{customW}} × {{customH}} mm</text></view>
+      <view class="custom-size">
+        <input class="cs-input" type="digit" value="{{customW}}" data-v="w" bindblur="onCustomW" bindconfirm="onCustomW" />
+        <text class="cs-x">×</text>
+        <input class="cs-input" type="digit" value="{{customH}}" data-v="h" bindblur="onCustomH" bindconfirm="onCustomH" />
+        <text class="cs-unit">mm（{{customMin}}~{{customMax}}）</text>
       </view>
     </view>
 
