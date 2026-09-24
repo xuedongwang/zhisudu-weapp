@@ -505,6 +505,190 @@ function drawZhoujihua(ctx, o, e) {
   ctx.restore()
 }
 
+// ---------- 书法格（v1.3：辅助线可自由组合的练字格）----------
+// 存量田字格 / 米字格不动（签名与输出均不变）；书法格把四种辅助线做成开关：
+//   cross 十字 / diag 对角（默认开，≈米字格）/ huigong 回宫 / jiugong 九宫（默认关）
+// 全部关闭时退化为纯方格网。开关为 0/1（papers.extra type:'switch'）。
+function drawShufage(ctx, o, e) {
+  const cs = e.cell * e.k
+  const nCols = gridCount(e.bw, cs)
+  const nRows = gridCount(e.bh, cs)
+  if (nCols < 1 || nRows < 1) return
+  const sx = e.L + (e.bw - nCols * cs) / 2
+  const sy = e.T + (e.bh - nRows * cs) / 2
+
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  // 十字 / 对角：与田字格、米字格同一基元
+  if (o.cross || o.diag) {
+    primCellAids(ctx, sx, sy, nCols, nRows, cs, { diag: !!o.diag, cross: !!o.cross })
+  }
+  // 回宫：逐格内框（边长 62%，居中）
+  if (o.huigong) {
+    const inset = cs * 0.19
+    const w = cs - inset * 2
+    for (let r = 0; r < nRows; r++) {
+      for (let c = 0; c < nCols; c++) {
+        ctx.strokeRect(sx + c * cs + inset, sy + r * cs + inset, w, w)
+      }
+    }
+  }
+  // 九宫：逐格三等分线（两竖两横）
+  if (o.jiugong) {
+    for (let r = 0; r < nRows; r++) {
+      for (let c = 0; c < nCols; c++) {
+        const x = sx + c * cs
+        const y = sy + r * cs
+        ctx.beginPath()
+        for (let i = 1; i <= 2; i++) {
+          ctx.moveTo(x + (cs * i) / 3, y); ctx.lineTo(x + (cs * i) / 3, y + cs)
+          ctx.moveTo(x, y + (cs * i) / 3); ctx.lineTo(x + cs, y + (cs * i) / 3)
+        }
+        ctx.stroke()
+      }
+    }
+  }
+  // 逐格外框（实线，不受线型影响）
+  applyStroke(ctx, e.color, e.frameW, 'solid', e.k)
+  primCellFrames(ctx, sx, sy, nCols, nRows, cs)
+}
+
+// ---------- 吉他六线谱（v1.3：六弦谱表，与五线谱同构）----------
+function drawJita(ctx, o, e) {
+  const sp = e.cell * e.k       // 弦距
+  const staffH = sp * 5         // 六线谱 6 条线 = 5 个间距
+  const groupGap = Math.max(sp * 3, 7 * e.k)
+  if (staffH <= 0) return
+  const w = Math.max((e.thumb ? 0.7 : 0.25) * e.k * e.wt, 0.5)
+  applyStroke(ctx, e.color, w, 'solid', e.k)
+  let y = e.T
+  while (y + staffH <= e.B) {
+    primStaff(ctx, e.L, e.R, y, sp, 6)
+    y += staffH + groupGap
+  }
+}
+
+// ---------- 等距网格（v1.3：等边三角网格，立体草图用）----------
+// 竖线 + ±60° 斜线，x 轴截距间距均为格宽 s，三个方向共顶点（标准等距网格）。
+// 斜线从盒顶画到盒底：竖直跨度 bh，水平位移 bh/√3。
+function drawDengju(ctx, o, e) {
+  const s = e.cell * e.k
+  if (s <= 0) return
+  const nCols = gridCount(e.bw, s)
+  if (nCols < 1) return
+  const sx = e.L + (e.bw - nCols * s) / 2
+  const run = e.bh / Math.sqrt(3)
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  ctx.beginPath()
+  for (let i = 0; i <= nCols; i++) {
+    ctx.moveTo(sx + i * s, e.T)
+    ctx.lineTo(sx + i * s, e.B)
+  }
+  const x0 = sx - Math.ceil(run / s) * s
+  for (let a = x0; a <= sx + nCols * s; a += s) {
+    ctx.moveTo(a, e.T)
+    ctx.lineTo(a + run, e.B)
+    ctx.moveTo(a, e.T)
+    ctx.lineTo(a - run, e.B)
+  }
+  ctx.stroke()
+}
+
+// ---------- 分镜纸（v1.3：16:9 画框阵列，支持 1~3 列，框下注释线）----------
+function drawFenjing(ctx, o, e) {
+  const gap = 6 * e.k      // 框间距
+  const noteH = 8 * e.k    // 框下注释区高
+  const colW = (e.bw - (e.cols - 1) * gap) / e.cols
+  const fh = (colW * 9) / 16
+  if (colW <= 0 || fh <= 0) return
+  const rows = []
+  let y = e.T
+  while (y + fh + noteH <= e.B) {
+    rows.push(y)
+    y += fh + noteH + gap
+  }
+  if (!rows.length) return
+  // 画框（16:9，实线外框）
+  applyStroke(ctx, e.color, e.frameW, 'solid', e.k)
+  for (const ry of rows) {
+    for (let c = 0; c < e.cols; c++) {
+      ctx.strokeRect(e.L + c * (colW + gap), ry, colW, fh)
+    }
+  }
+  // 框下注释线（跟随线型）
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  ctx.beginPath()
+  for (const ry of rows) {
+    for (let c = 0; c < e.cols; c++) {
+      const ly = ry + fh + noteH * 0.7
+      ctx.moveTo(e.L + c * (colW + gap), ly)
+      ctx.lineTo(e.L + c * (colW + gap) + colW, ly)
+    }
+  }
+  ctx.stroke()
+}
+
+// ---------- 会议记录纸（v1.3：头部信息栏 + 正文横线）----------
+// 头部两行（议题 / 日期与会人），行距为正文的 1.5 倍，底部分隔线用主线宽压住。
+function drawHuiyi(ctx, o, e) {
+  const rowH = e.cell * e.k
+  if (rowH <= 0) return
+  const headH = 3 * rowH
+  if (e.bh < headH + rowH) return
+  // 头部信息行分隔（跟随线型）
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  primHLines(ctx, e.L, e.R, [e.T + headH / 2])
+  // 头部分隔线（实线主线）
+  applyStroke(ctx, e.color, e.mainW, 'solid', e.k)
+  primHLines(ctx, e.L, e.R, [e.T + headH])
+  // 正文横线
+  const bodyT = e.T + headH
+  const nRows = gridCount(e.B - bodyT, rowH)
+  if (nRows < 1) return
+  const ys = []
+  for (let i = 1; i <= nRows; i++) ys.push(bodyT + i * rowH)
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  primHLines(ctx, e.L, e.R, ys)
+}
+
+// ---------- 项目规划纸（v1.3：待办方框 + 行横线）----------
+function drawXiangmu(ctx, o, e) {
+  const rowH = e.cell * e.k
+  if (rowH <= 0) return
+  const nRows = gridCount(e.bh, rowH)
+  if (nRows < 1) return
+  const boxS = Math.min(4.5 * e.k, rowH * 0.55) // 待办方框边长，行内垂直居中
+  applyStroke(ctx, e.color, e.frameW, 'solid', e.k)
+  for (let r = 0; r < nRows; r++) {
+    ctx.strokeRect(e.L, e.T + r * rowH + (rowH - boxS) / 2, boxS, boxS)
+  }
+  // 行横线（跟随线型，从方框右侧起，留出书写间隙）
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  const ys = []
+  for (let r = 1; r <= nRows; r++) ys.push(e.T + r * rowH)
+  primHLines(ctx, e.L + boxS + 3 * e.k, e.R, ys)
+}
+
+// ---------- 草图纸（v1.3：细密淡格，草稿与速写）----------
+// 与方格纸同构，但格距更小、整体降透明度，避免密格印出来发灰（与坐标纸细线同处理）。
+function drawCaogao(ctx, o, e) {
+  const cs = e.cell * e.k
+  if (cs <= 0) return
+  const nCols = gridCount(e.bw, cs)
+  const nRows = gridCount(e.bh, cs)
+  if (nCols < 1 || nRows < 1) return
+  const sx = e.L + (e.bw - nCols * cs) / 2
+  const sy = e.T + (e.bh - nRows * cs) / 2
+  const xs = []
+  for (let i = 0; i <= nCols; i++) xs.push(sx + i * cs)
+  const ys = []
+  for (let j = 0; j <= nRows; j++) ys.push(sy + j * cs)
+  ctx.save()
+  ctx.globalAlpha = 0.5
+  applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+  primLineMesh(ctx, xs, sy, sy + nRows * cs, ys, sx, sx + nCols * cs)
+  ctx.restore()
+}
+
 // ---------- 注册表：纸型 → 绘制函数 ----------
 // 新增纸型只需在此登记一行 + 实现一个函数；未登记的纸型不绘制（与原 if 链落空行为一致）
 const TYPE_DRAWERS = {
@@ -525,6 +709,14 @@ const TYPE_DRAWERS = {
   wuxianpu: drawWuxianpu,
   kangnaier: drawKangnaier,
   zhoujihua: drawZhoujihua,
+  // v1.3 新增（全部建在基元上）
+  shufage: drawShufage,
+  jita: drawJita,
+  dengju: drawDengju,
+  fenjing: drawFenjing,
+  huiyi: drawHuiyi,
+  xiangmu: drawXiangmu,
+  caogao: drawCaogao,
 }
 
 /**
@@ -698,11 +890,9 @@ function drawPage(ctx, o) {
     ctx.clip()
     drawBlock(ctx, {
       box,
-      type: block.type,
-      cell: block.cell,
-      cols: block.cols,
-      cue: block.cue,
-      rows: block.rows,
+      // v1.3：区块参数整体透传——纸型专属参数（cue/rows/书法格开关等）不再逐个列举，
+      // 新增纸型的 extra 参数无需改动这里。旧纸型读到的字段与逐一传参完全相同。
+      ...block,
       color: o.color,
       style: o.style,
       pxPerMm: k,

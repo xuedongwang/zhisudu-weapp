@@ -183,6 +183,8 @@ Page({
       extras: (paper.extra || []).map((e) => ({
         key: e.key, label: e.label, min: e.min, max: e.max, step: e.step,
         unit: e.unit || '', value: cur[e.key],
+        // v1.3：布尔开关型参数（书法格辅助线），渲染为开关而非滑杆
+        sw: e.type === 'switch',
       })),
       orientText: p.orient === 'l' ? '横向' : '纵向',
       sizeText: size.name,
@@ -412,6 +414,14 @@ Page({
     const key = e.currentTarget.dataset.k
     track.reportParamChange(this._curType(), key, this._active)
     this._params.blocks[this._active][key] = parseFloat(e.detail.value)
+    this._syncView()
+    this._drawPreview()
+  },
+  // 纸型专属开关（v1.3 书法格辅助线：十字/对角/回宫/九宫）
+  onExtraSwitch(e) {
+    const key = e.currentTarget.dataset.k
+    track.reportParamChange(this._curType(), key, this._active)
+    this._params.blocks[this._active][key] = e.detail.value ? 1 : 0
     this._syncView()
     this._drawPreview()
   },

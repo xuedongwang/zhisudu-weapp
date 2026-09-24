@@ -81,12 +81,15 @@
               activeColor="#0E8A6D" block-size="24" bindchanging="onCellInput" bindchange="onCellInput" />
     </view>
 
-    <!-- 纸型专属参数（FR-02.7）：康奈尔线索栏宽、周计划行数等 -->
+    <!-- 纸型专属参数（FR-02.7）：康奈尔线索栏宽、周计划行数等；
+         v1.3 起支持开关型（书法格辅助线），渲染为开关而非滑杆 -->
     <view class="prow" wx:for="{{extras}}" wx:key="key">
-      <view class="plabel"><text class="b">{{item.label}}</text><text class="pval">{{item.value}}{{item.unit}}</text></view>
-      <slider min="{{item.min}}" max="{{item.max}}" step="{{item.step}}" value="{{item.value}}"
+      <view class="plabel"><text class="b">{{item.label}}</text><text class="pval">{{item.sw ? (item.value ? '开' : '关') : item.value + item.unit}}</text></view>
+      <slider wx:if="{{!item.sw}}" min="{{item.min}}" max="{{item.max}}" step="{{item.step}}" value="{{item.value}}"
               activeColor="#0E8A6D" block-size="24" data-k="{{item.key}}"
               bindchanging="onExtraInput" bindchange="onExtraInput" />
+      <switch wx:else checked="{{!!item.value}}" data-k="{{item.key}}" color="#0E8A6D"
+              bindchange="onExtraSwitch" />
     </view>
 
     <!-- 边距（FR-02.5）：页面级，作用于整张纸 -->

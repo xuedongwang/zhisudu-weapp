@@ -158,6 +158,15 @@ const PAPERS = {
     category: 'jichu',
     desc: '纯白页 · 自由书写或绘画',
   },
+  // 草图纸（v1.3）：细密淡格，与方格纸同构但格距更小、整体降透明度
+  caogao: {
+    key: 'caogao',
+    name: '草图纸',
+    short: '草稿',
+    category: 'jichu',
+    desc: '细密淡格 · 草稿与速写',
+    cell: { min: 2, max: 5, def: 2.5, step: 0.5, label: '格宽' },
+  },
 
   // ---------- 练字与书写 ----------
   tianzige: {
@@ -175,6 +184,22 @@ const PAPERS = {
     category: 'lianzi',
     desc: '笔顺定位 · 默认格宽 14mm',
     cell: { min: 8, max: 20, def: 14, step: 0.5, label: '格宽' },
+  },
+  // 书法格（v1.3）：四种辅助线开关自由组合，默认 十字+对角（≈米字格）。
+  // extra type:'switch' 表示布尔开关（0/1），配置页渲染为开关而非滑杆。
+  shufage: {
+    key: 'shufage',
+    name: '书法格',
+    short: '书法',
+    category: 'lianzi',
+    desc: '十字/对角/回宫/九宫自由组合',
+    cell: { min: 8, max: 20, def: 14, step: 0.5, label: '格宽' },
+    extra: [
+      { key: 'cross', label: '十字', def: 1, min: 0, max: 1, step: 1, type: 'switch' },
+      { key: 'diag', label: '对角', def: 1, min: 0, max: 1, step: 1, type: 'switch' },
+      { key: 'huigong', label: '回宫', def: 0, min: 0, max: 1, step: 1, type: 'switch' },
+      { key: 'jiugong', label: '九宫', def: 0, min: 0, max: 1, step: 1, type: 'switch' },
+    ],
   },
   pinyin: {
     key: 'pinyin',
@@ -233,6 +258,15 @@ const PAPERS = {
     desc: '直角坐标系 · 每 5 格加重 · 默认 5mm',
     cell: { min: 4, max: 15, def: 5, step: 0.5, label: '格宽' },
   },
+  // 等距网格（v1.3）：等边三角网格，立体草图与轴测图用
+  dengju: {
+    key: 'dengju',
+    name: '等距网格',
+    short: '等距',
+    category: 'xueke',
+    desc: '等边三角网格 · 立体草图',
+    cell: { min: 5, max: 20, def: 10, step: 0.5, label: '间距' },
+  },
   wuxianpu: {
     key: 'wuxianpu',
     name: '五线谱纸',
@@ -240,6 +274,15 @@ const PAPERS = {
     category: 'yinyue',
     desc: '五行谱表 · 默认线距 2.5mm',
     cell: { min: 1.5, max: 4, def: 2.5, step: 0.5, label: '谱线间距' },
+  },
+  // 吉他六线谱（v1.3）：与五线谱同构，6 条线一组
+  jita: {
+    key: 'jita',
+    name: '吉他六线谱',
+    short: '六线谱',
+    category: 'yinyue',
+    desc: '六弦谱表 · 默认弦距 2.5mm',
+    cell: { min: 1.5, max: 4, def: 2.5, step: 0.5, label: '弦距' },
   },
   kangnaier: {
     key: 'kangnaier',
@@ -262,6 +305,34 @@ const PAPERS = {
     extra: [
       { key: 'rows', label: '行数', def: 8, min: 4, max: 12, step: 1, unit: '行' },
     ],
+  },
+  // 分镜纸（v1.3）：16:9 画框阵列。无 cell（框尺寸由列数与盒宽决定），
+  // 复用 hasCols 的分栏控件作为「每行框数」（1~3 列）
+  fenjing: {
+    key: 'fenjing',
+    name: '分镜纸',
+    short: '分镜',
+    category: 'biji',
+    desc: '16:9 画框 + 注释线 · 支持 1~3 列',
+    hasCols: true,
+  },
+  // 会议记录纸（v1.3）：头部信息栏 + 正文横线
+  huiyi: {
+    key: 'huiyi',
+    name: '会议记录纸',
+    short: '会议',
+    category: 'biji',
+    desc: '议题栏 + 正文横线 · 默认行距 8mm',
+    cell: { min: 6, max: 12, def: 8, step: 0.5, label: '行距' },
+  },
+  // 项目规划纸（v1.3）：待办方框 + 行横线
+  xiangmu: {
+    key: 'xiangmu',
+    name: '项目规划纸',
+    short: '项目',
+    category: 'biji',
+    desc: '待办方框 + 横线 · 默认行高 10mm',
+    cell: { min: 7, max: 16, def: 10, step: 0.5, label: '行高' },
   },
 }
 
@@ -409,7 +480,12 @@ function normalizeBlock(raw, fallbackType) {
   // 参数键，进而污染 signature 去重与 describeBlock 文案
   if (p.cell) out.cell = clampNum(src.cell, p.cell.min, p.cell.max, p.cell.def)
   if (p.hasCols) out.cols = clampInt(src.cols, 1, 3, 2)
-  ;(p.extra || []).forEach((e) => { out[e.key] = clampNum(src[e.key], e.min, e.max, e.def) })
+  ;(p.extra || []).forEach((e) => {
+    // type:'switch' 为布尔开关（0/1），必须取整——否则会留下 0.5 这类半开半关的脏值
+    out[e.key] = e.type === 'switch'
+      ? clampInt(src[e.key], 0, 1, e.def)
+      : clampNum(src[e.key], e.min, e.max, e.def)
+  })
   return out
 }
 
@@ -532,7 +608,14 @@ function describeBlock(rawBlock) {
   const parts = []
   if (p.cell) parts.push(`${p.cell.label}${b.cell}mm`)
   if (p.hasCols) parts.push(`${b.cols}栏`)
-  ;(p.extra || []).forEach((e) => { parts.push(`${e.label}${b[e.key]}${e.unit || ''}`) })
+  ;(p.extra || []).forEach((e) => {
+    // 开关型参数只在开启时占文案（如「十字 · 对角」），关闭不占位
+    if (e.type === 'switch') {
+      if (b[e.key]) parts.push(e.label)
+    } else {
+      parts.push(`${e.label}${b[e.key]}${e.unit || ''}`)
+    }
+  })
   const title = parts.length ? `${p.name} · ${parts[0]}` : p.name
   return { title, parts, sub: parts.slice(1).join(' · ') }
 }
