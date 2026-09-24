@@ -66,8 +66,108 @@ function drawBlock(ctx, o) {
   const dashW = Math.max((thumb ? 0.6 : 0.28) * k, 0.5)
   const mainW = Math.max((thumb ? 0.9 : 0.35) * k, 0.5)
 
+  // ========== 基础纸型（v1.1 新增）==========
+  // 五种的共同约定，与既有分支保持一致，保证同一张纸上风格统一：
+  //   · 主内容线用 dashW（二级线宽），跟随用户的线型（实线/虚线/点线）；
+  //   · 网格类全部先算「放得下几格」再盒内居中（sx = L + (bw - n*cs)/2），不贴边；
+  //   · 多条线累积到一条 path 后**只 stroke 一次**，减少 canvas 调用次数。
+
+  // ---------- 横线纸（每行底边一条线，最上方留出完整一行书写空间）----------
+  // 行线位置取 T + i*rowH（i 从 1 起），与「康奈尔笔记纸」笔记区完全同构：
+  // 第一行写在上边距与第一条线之间，因此顶部不会出现"线贴着上边"的逼仄感。
+  if (o.type === 'hengxian') {
+    const rowH = cell * k
+    if (rowH <= 0) return
+    const nRows = gridCount(bh, rowH)
+    if (nRows < 1) return
+    applyStroke(ctx, color, dashW, style, k)
+    ctx.beginPath()
+    for (let i = 1; i <= nRows; i++) {
+      const ly = T + i * rowH
+      ctx.moveTo(L, ly)
+      ctx.lineTo(R, ly)
+    }
+    ctx.stroke()
+  }
+
+  // ---------- 竖线纸（每列右边一条线，最左侧留出完整一列书写空间）----------
+  else if (o.type === 'shuxian') {
+    const colW = cell * k
+    if (colW <= 0) return
+    const nCols = gridCount(bw, colW)
+    if (nCols < 1) return
+    applyStroke(ctx, color, dashW, style, k)
+    ctx.beginPath()
+    for (let i = 1; i <= nCols; i++) {
+      const lx = L + i * colW
+      ctx.moveTo(lx, T)
+      ctx.lineTo(lx, B)
+    }
+    ctx.stroke()
+  }
+
+  // ---------- 方格纸（等权方格，无加重线）----------
+  // 与坐标纸的区别：坐标纸每 5 格加重（用于读数/作图定位），方格纸等权（用于书写/计算）。
+  // 竖线含 i=0 与 i=nCols、横线含 j=0 与 j=nRows，边界即网格边缘，因此**不再单独描外框**，
+  // 避免外框与首末格线在像素上叠画出更重的一条（同作文方格纸的外部处理）。
+  else if (o.type === 'fangge') {
+    const cs = cell * k
+    if (cs <= 0) return
+    const nCols = gridCount(bw, cs)
+    const nRows = gridCount(bh, cs)
+    if (nCols < 1 || nRows < 1) return
+    const sx = L + (bw - nCols * cs) / 2
+    const sy = T + (bh - nRows * cs) / 2
+    applyStroke(ctx, color, dashW, style, k)
+    ctx.beginPath()
+    for (let i = 0; i <= nCols; i++) {
+      ctx.moveTo(sx + i * cs, sy)
+      ctx.lineTo(sx + i * cs, sy + nRows * cs)
+    }
+    for (let j = 0; j <= nRows; j++) {
+      ctx.moveTo(sx, sy + j * cs)
+      ctx.lineTo(sx + nCols * cs, sy + j * cs)
+    }
+    ctx.stroke()
+  }
+
+  // ---------- 点阵纸（网格交点画圆点）----------
+  // 性能要点：所有圆点累积到**同一条 path**、最后只 fill 一次。若逐点 beginPath+fill，
+  // A4 默认 5mm 点距有约 38×55 ≈ 2090 个点，会产生两千次状态提交，明显拖慢导出。
+  // 每个圆点前先 moveTo(圆心+r, 圆心) 起新子路径，否则各点会被直线连成一串。
+  else if (o.type === 'dianzhen') {
+    const cs = cell * k
+    if (cs <= 0) return
+    const nCols = gridCount(bw, cs)
+    const nRows = gridCount(bh, cs)
+    if (nCols < 1 || nRows < 1) return
+    const sx = L + (bw - nCols * cs) / 2
+    const sy = T + (bh - nRows * cs) / 2
+    const r = Math.max((thumb ? 0.7 : 0.22) * k, 0.6)
+    ctx.fillStyle = color
+    ctx.beginPath()
+    for (let r2 = 0; r2 <= nRows; r2++) {
+      for (let c = 0; c <= nCols; c++) {
+        const x = sx + c * cs
+        const y = sy + r2 * cs
+        ctx.moveTo(x + r, y)
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+      }
+    }
+    ctx.fill()
+  }
+
+  // ---------- 空白纸（不绘制任何内容）----------
+  // ⚠️ 这里是**唯一会合法产出全白图片**的纸型。导出链路的「静默失败检测」若只按
+  // 「非空白像素占比」判定，会把空白纸的正常输出误报成失败（见 RK-10 / RK-14）。
+  // 因此导出后回读校验必须结合 blocks[0].type 判断：kongbai 时跳过非空白像素校验，
+  // 只校验文件尺寸与是否为有效 PNG。改导出校验时务必一并考虑这一条。
+  else if (o.type === 'kongbai') {
+    return
+  }
+
   // ---------- 田字格 / 米字格 ----------
-  if (o.type === 'tianzige' || o.type === 'mizige') {
+  else if (o.type === 'tianzige' || o.type === 'mizige') {
     const cs = cell * k
     const nCols = gridCount(bw, cs)
     const nRows = gridCount(bh, cs)

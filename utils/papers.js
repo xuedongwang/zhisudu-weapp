@@ -90,7 +90,10 @@ function layoutBoxes(layoutKey, width, height, margin, gap) {
 
 // ---------- 纸型分类（FR-01 首页分组）----------
 // 原首页区块标题写死「儿童场景纸」，新增中学 / 成人向纸型后会名不副实，故改为按用途分类
+// v1.1 新增「基础纸型」并**置于最前**：它是使用频次最高的一组，也是对标 PaperMe 后
+// 补上的最大缺口（详见《功能扩展方向评估》12.4 发现 1）
 const CATEGORIES = [
+  { key: 'jichu', name: '基础纸型' },
   { key: 'lianzi', name: '练字与书写' },
   { key: 'xueke', name: '学科作业' },
   { key: 'yinyue', name: '音乐乐谱' },
@@ -104,6 +107,55 @@ const CATEGORIES = [
 // extra: 纸型专属参数（FR-02.7）——原先 defaultParams 只认固定 6 个字段，
 //        坐标纸细分、康奈尔线索栏比例等无处安放；改为纸型可声明自己的额外可调项
 const PAPERS = {
+  // ---------- 基础纸型（v1.1 新增）----------
+  // 对标 PaperMe 后补的最基础缺口：原先 12 种全是书法格与作业纸，相当于
+  // 「只卖书法纸和作业纸，不卖最普通的横线本」。默认值取市面常见规格：
+  // 横线本行距 8mm、方格本 5mm、点阵本 5mm。
+  hengxian: {
+    key: 'hengxian',
+    name: '横线纸',
+    short: '横线',
+    category: 'jichu',
+    desc: '日常笔记 · 默认行距 8mm',
+    cell: { min: 5, max: 12, def: 8, step: 0.5, label: '行距' },
+  },
+  shuxian: {
+    key: 'shuxian',
+    name: '竖线纸',
+    short: '竖线',
+    category: 'jichu',
+    desc: '竖排书写 · 默认列距 8mm',
+    cell: { min: 5, max: 12, def: 8, step: 0.5, label: '列距' },
+  },
+  fangge: {
+    key: 'fangge',
+    name: '方格纸',
+    short: '方格',
+    category: 'jichu',
+    desc: '计算与绘图 · 默认格宽 5mm',
+    cell: { min: 3, max: 12, def: 5, step: 0.5, label: '格宽' },
+  },
+  dianzhen: {
+    key: 'dianzhen',
+    name: '点阵纸',
+    short: '点阵',
+    category: 'jichu',
+    desc: '画图与规划 · 默认点距 5mm',
+    cell: { min: 3, max: 12, def: 5, step: 0.5, label: '点距' },
+  },
+  // ⚠️ 全库**唯一没有 cell 的纸型**：空白纸没有任何可调尺寸。
+  // 早先所有纸型都假定必有 cell，normalizeBlock / describeBlock / config 页等地
+  // 都无保护地读 p.cell —— 因此本次一并加了「cell 可选」支持（各处判空）。
+  // **不要把 cell 硬塞给它**：那会在配置页多出一个拖了没反应的滑杆，比没有更糟。
+  kongbai: {
+    key: 'kongbai',
+    name: '空白纸',
+    short: '空白',
+    category: 'jichu',
+    desc: '纯白页 · 自由书写或绘画',
+  },
+
+  // ---------- 练字与书写 ----------
   tianzige: {
     key: 'tianzige',
     name: '田字格',
@@ -233,7 +285,9 @@ const A4 = { widthMm: SIZES[0].widthMm, heightMm: SIZES[0].heightMm }
 // 区块默认参数（含纸型专属参数）
 function defaultBlock(key) {
   const p = PAPERS[key] || PAPERS.tianzige
-  const b = { type: p.key, cell: p.cell.def }
+  const b = { type: p.key }
+  // p.cell 可缺省（空白纸）：缺省时不写 cell，避免留下一个无意义的参数键
+  if (p.cell) b.cell = p.cell.def
   if (p.hasCols) b.cols = 2
   ;(p.extra || []).forEach((e) => { b[e.key] = e.def })
   return b
@@ -268,7 +322,10 @@ function normalizeBlock(raw, fallbackType) {
   const src = raw || {}
   const type = PAPERS[src.type] ? src.type : (PAPERS[fallbackType] ? fallbackType : 'tianzige')
   const p = PAPERS[type]
-  const out = { type, cell: clampNum(src.cell, p.cell.min, p.cell.max, p.cell.def) }
+  const out = { type }
+  // p.cell 可缺省（空白纸）：有才归一化。若无条件写 cell，会给无参纸型凭空造出一个
+  // 参数键，进而污染 signature 去重与 describeBlock 文案
+  if (p.cell) out.cell = clampNum(src.cell, p.cell.min, p.cell.max, p.cell.def)
   if (p.hasCols) out.cols = clampInt(src.cols, 1, 3, 2)
   ;(p.extra || []).forEach((e) => { out[e.key] = clampNum(src[e.key], e.min, e.max, e.def) })
   return out
@@ -312,7 +369,10 @@ function normalizeParams(raw, fallbackType) {
 function signature(raw) {
   const n = normalizeParams(raw)
   const blocks = n.blocks.map((b) => {
-    const o = { type: b.type, cell: b.cell }
+    const o = { type: b.type }
+    // cell 可缺省（空白纸）：缺省时不写该键——JSON.stringify 会丢掉 undefined，
+    // 显式判断只是让「键序」在两种情况下都确定，避免去重签名出现两种等价写法
+    if (b.cell !== undefined) o.cell = b.cell
     if (b.cols !== undefined) o.cols = b.cols
     Object.keys(b).sort().forEach((k) => {
       if (k !== 'type' && k !== 'cell' && k !== 'cols') o[k] = b[k]
@@ -355,13 +415,16 @@ function styleName(v) {
 }
 
 // 区块文案：主行「纸型 · 参数」，如「田字格 · 格宽12mm」
+// 无 cell 的纸型（空白纸）只有纸型名，不拼参数——拼一个不存在的参数会得到「undefinedmm」
 function describeBlock(rawBlock) {
   const b = normalizeBlock(rawBlock, rawBlock && rawBlock.type)
   const p = PAPERS[b.type]
-  const parts = [`${p.cell.label}${b.cell}mm`]
+  const parts = []
+  if (p.cell) parts.push(`${p.cell.label}${b.cell}mm`)
   if (p.hasCols) parts.push(`${b.cols}栏`)
   ;(p.extra || []).forEach((e) => { parts.push(`${e.label}${b[e.key]}${e.unit || ''}`) })
-  return { title: `${p.name} · ${parts[0]}`, parts, sub: parts.slice(1).join(' · ') }
+  const title = parts.length ? `${p.name} · ${parts[0]}` : p.name
+  return { title, parts, sub: parts.slice(1).join(' · ') }
 }
 
 /**
@@ -378,7 +441,8 @@ function describePage(raw) {
   let title
   if (n.layout === '1x1') {
     const p = PAPERS[n.blocks[0].type]
-    title = `${p.name} · ${p.cell.label}${n.blocks[0].cell}mm`
+    // 无 cell 的纸型（空白纸）只给纸型名，不拼参数
+    title = p.cell ? `${p.name} · ${p.cell.label}${n.blocks[0].cell}mm` : p.name
   } else {
     const names = n.blocks.map((b) => PAPERS[b.type].name)
     title = `${l.name} · ${names.join(' / ')}`

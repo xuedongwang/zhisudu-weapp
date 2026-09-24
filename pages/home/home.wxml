@@ -17,7 +17,7 @@
     </scroll-view>
     <view class="card empty" wx:else>☆ 长按纸型卡片可收藏，收藏后置顶在这里</view>
 
-    <!-- 纸型分类分组（FR-01）：12 种纸型按用途分四类，原先把全部纸型塞在「儿童场景纸」
+    <!-- 纸型分类分组（FR-01）：17 种纸型按用途分五类，原先把全部纸型塞在「儿童场景纸」
          一个标题下，新增中学 / 成人向纸型后标题名不副实 -->
     <block wx:for="{{groups}}" wx:key="key" wx:for-item="g">
       <view class="sec-title">{{g.name}}<text class="more">{{g.papers.length}} 种</text></view>

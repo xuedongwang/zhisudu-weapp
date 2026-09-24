@@ -73,8 +73,9 @@
       </view>
     </view>
 
-    <!-- 格宽/行高/线距（FR-02.3） -->
-    <view class="prow">
+    <!-- 格宽/行高/线距（FR-02.3）。
+         v1.1：空白纸没有可调尺寸（papers.PAPERS[kongbai] 无 cell），hasCell 为假时整行隐藏 -->
+    <view class="prow" wx:if="{{hasCell}}">
       <view class="plabel"><text class="b">{{cellLabel}}</text><text class="pval">{{cell}} mm</text></view>
       <slider min="{{cellMin}}" max="{{cellMax}}" step="{{cellStep}}" value="{{cell}}"
               activeColor="#0E8A6D" block-size="24" bindchanging="onCellInput" bindchange="onCellInput" />

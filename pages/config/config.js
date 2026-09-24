@@ -141,11 +141,15 @@ Page({
       multi: p.layout !== '1x1',
       blockType: cur.type,
       blockName: paper.name,
-      cellLabel: paper.cell.label,
-      cell: cur.cell,
-      cellMin: paper.cell.min,
-      cellMax: paper.cell.max,
-      cellStep: paper.cell.step,
+      // v1.1：cell 变为可选（空白纸没有任何可调尺寸）。
+      // 早先这里无保护地读 paper.cell.label，遇到无 cell 的纸型会直接抛错 → 配置页白屏。
+      // hasCell 为假时，模板里「格宽」整行（含滑杆）不渲染，避免出现拖了没反应的控件。
+      hasCell: !!paper.cell,
+      cellLabel: paper.cell ? paper.cell.label : '',
+      cell: paper.cell ? cur.cell : 0,
+      cellMin: paper.cell ? paper.cell.min : 0,
+      cellMax: paper.cell ? paper.cell.max : 0,
+      cellStep: paper.cell ? paper.cell.step : 0,
       hasCols: !!paper.hasCols,
       cols: cur.cols || 2,
       extras: (paper.extra || []).map((e) => ({
@@ -386,8 +390,10 @@ Page({
     const layout = papers.findLayout(params.layout)
     track.report('share_click', { page_name: 'config', paper_type: params.blocks[0].type })
 
+    // v1.1：无 cell 的纸型（空白纸）不拼「（8mm）」这样的参数——会拼出「（undefinedmm）」
+    const cellOf = params.blocks[0].cell
     const title = params.layout === '1x1'
-      ? (p ? `已配好一张${p.name}（${params.blocks[0].cell}mm），点开就能打印` : '纸速打 · 免费打印练习纸')
+      ? (p ? `已配好一张${p.name}${cellOf !== undefined ? `（${cellOf}mm）` : ''}，点开就能打印` : '纸速打 · 免费打印练习纸')
       : `已配好一张${layout.name}（${params.blocks.length} 区），点开就能打印`
 
     const encoded = encodeURIComponent(JSON.stringify(params))
