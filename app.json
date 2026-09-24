@@ -6,6 +6,7 @@
     "pages/mine/mine",
     "pages/favs/favs",
     "pages/history/history",
+    "pages/batch/batch",
     "pages/about/about"
   ],
   "window": {

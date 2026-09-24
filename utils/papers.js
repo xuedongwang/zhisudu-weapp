@@ -585,11 +585,24 @@ function signature(raw) {
 
 // ---------- 存储条目归一化 ----------
 
+// 批量记录签名（v1.5）：一套 N 张 = 各张参数签名的**有序**拼接。
+// 顺序参与签名——同一批纸换个顺序就是另一套（相册保存序 = 打印店交付序，顺序是语义的一部分）
+function batchSignature(items) {
+  return (Array.isArray(items) ? items : []).map((p) => signature(p)).join('|')
+}
+
 // 把一条存量记录（模板 / 最近生成 / 打印历史）升级成当前结构。
 // 旧条目没有 layout，归一化后自然是 1x1。
 // 迁到 papers.js 的原因：v1.2.0 起 utils/store.js 与 utils/sync.js 都要用它做
 // 去重与合并，若留在 store.js 里，sync 只能复制一份（改一处漏一处）。
 function normalizeEntry(e, legacyType) {
+  // v1.5 批量记录：没有单一 params，items 逐个归一化后原样带过。
+  // ⚠️ 若不特判，normalizeParams(undefined) 会把它静默变成一张默认田字格——
+  //    批量记录一进列表就失真，且签名去重会把所有批量记录误判成同一条
+  if (e && e.batch) {
+    const items = (Array.isArray(e.items) ? e.items : []).map((p) => normalizeParams(p))
+    return { ...e, batch: true, items, count: e.count || items.length }
+  }
   const params = normalizeParams(e && e.params, (e && e.type) || legacyType)
   return {
     ...e,
@@ -723,6 +736,6 @@ module.exports = {
   CUSTOM_SIZE,
   DEFAULT_SIZE, DEFAULT_LAYOUT, BLOCK_GAP_MM,
   blockCount, findLayout, findSize, pageSizeMm, layoutBoxes, dpiForSize,
-  defaultBlock, defaultParams, normalizeBlock, normalizeParams, normalizeEntry, signature,
+  defaultBlock, defaultParams, normalizeBlock, normalizeParams, normalizeEntry, signature, batchSignature,
   describeBlock, describePage, templateName, groupedPapers, pixelSize,
 }

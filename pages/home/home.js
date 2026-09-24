@@ -78,6 +78,23 @@ Page({
   // 最近生成记录（最多 10 条）：整页参数复用入口，支持多区块版面
   _buildRecent() {
     const list = store.getRecent().map((r) => {
+      // v1.5 批量记录：一张卡片代表「一套」，缩略图用第一张，文案列出去重后的纸型
+      if (r.batch) {
+        const names = []
+        r.items.forEach((p) => {
+          const n = (papers.PAPERS[p.blocks[0].type] || {}).name || p.blocks[0].type
+          if (names.indexOf(n) < 0) names.push(n)
+        })
+        return {
+          batch: true,
+          items: r.items,
+          params: r.items[0], // 缩略图用整套的第一张
+          type: '__batch__',
+          title: `批量一套 · ${r.count} 张`,
+          desc: names.join(' · '),
+          thumb: '',
+        }
+      }
       const d = papers.describePage(r.params)
       return {
         params: r.params,
@@ -119,6 +136,13 @@ Page({
     const idx = e.currentTarget.dataset.index
     const item = this.data.recent[idx]
     if (!item) return
+    // v1.5 批量记录：整套带去批量导出页（参数可能很长，走 globalData 不走 URL）
+    if (item.batch) {
+      track.report('paper_select', { paper_type: '__batch__', source: 'recent' })
+      getApp().globalData.batchSeed = item.items
+      wx.navigateTo({ url: '/pages/batch/batch?seed=1' })
+      return
+    }
     track.report('paper_select', { paper_type: item.type, source: 'recent' })
     track.report('template_reuse', { paper_type: item.type })
     const params = encodeURIComponent(JSON.stringify(item.params))
@@ -128,6 +152,11 @@ Page({
   // 打印历史（FR-16）：本区块只列最近 10 条参数复用，完整流水与累计张数在历史页
   goHistory() {
     wx.navigateTo({ url: '/pages/history/history' })
+  },
+
+  // v1.5 批量导出入口（最近生成区块标题右侧）
+  goBatch() {
+    wx.navigateTo({ url: '/pages/batch/batch' })
   },
 
   // 转发卡片（FR-15）：不定义时微信会退回「页面截图 + 页面标题」，卡片不可控。

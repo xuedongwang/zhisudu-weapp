@@ -12,7 +12,7 @@
 
   <!-- 历史流水 -->
   <block wx:if="{{history.length}}">
-    <view class="sec-title">全部记录<text class="more">保留最近 {{kept}}/{{limitNum}} 条</text></view>
+    <view class="sec-title">全部记录<text class="more" style="padding: 12rpx 0 12rpx 24rpx;" bindtap="goBatch">批量导出 ›</text><text class="more">保留最近 {{kept}}/{{limitNum}} 条</text></view>
     <view class="card">
       <view class="his-item" wx:for="{{history}}" wx:key="id">
         <view class="hicon">

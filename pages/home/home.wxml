@@ -36,7 +36,7 @@
     </block>
 
     <!-- 最近生成（参数复用快捷入口；完整流水与累计张数在打印历史页） -->
-    <view class="sec-title" wx:if="{{recent.length}}">最近生成<text class="more" style="padding: 12rpx 0 12rpx 24rpx;" bindtap="goHistory">{{hisTotal ? '共 ' + hisTotal + ' 张 ›' : '查看全部 ›'}}</text></view>
+    <view class="sec-title" wx:if="{{recent.length}}">最近生成<text class="more" style="padding: 12rpx 0 12rpx 24rpx;" bindtap="goBatch">批量导出 ›</text><text class="more" style="padding: 12rpx 0 12rpx 24rpx;" bindtap="goHistory">{{hisTotal ? '共 ' + hisTotal + ' 张 ›' : '查看全部 ›'}}</text></view>
     <view class="card recent-card" wx:if="{{recent.length}}">
       <view class="recent-item" wx:for="{{recent}}" wx:key="index">
         <!-- 缩略图：占位与真图共用同一盒子，图片回填时行高不跳 -->

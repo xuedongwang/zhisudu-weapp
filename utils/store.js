@@ -15,6 +15,7 @@ const RECENT_LIMIT = LIMITS.recent
 const HISTORY_LIMIT = LIMITS.history
 
 const MULTI_KEY = '__multi__' // 多区块页在纸型分布里的归类键
+const BATCH_KEY = '__batch__' // v1.5 批量任务在纸型分布里的归类键
 
 // ---------- 归一化辅助 ----------
 
@@ -188,6 +189,54 @@ function clearHistory() {
   sync.afterWrite(['history', 'historyTotal'])
 }
 
+// ---------- 批量导出（v1.5）----------
+// 记录口径（用户已确认）：一次批量任务 = 最近生成里**一条**批量记录 + 打印历史里
+// **一条**批量记录，不是 N 条——否则「最近生成」会被一套纸刷屏。
+// 批量条目形态：{ batch:true, items:[params...], count, time }（历史条目另有 id）。
+// items 保留**整套参数（含失败项）**——最近记录点「再来一套」要能还原整套；
+// count 在两个列表里语义不同：最近记录 = 整套张数，历史 = 成功生成的张数（计入累计）。
+
+// 批量任务完成（含部分完成）后记入最近生成；同套去重（签名含顺序，换序即另一套）
+function pushBatchRecent(items) {
+  if (!items || !items.length) return
+  const norm = items.map((p) => papers.normalizeParams(p))
+  const sig = papers.batchSignature(norm)
+  let list = getRecent()
+  list = list.filter((r) => !(r.batch && papers.batchSignature(r.items) === sig))
+  list.unshift({ batch: true, items: norm, count: norm.length, time: Date.now() })
+  if (list.length > RECENT_LIMIT) list = list.slice(0, RECENT_LIMIT)
+  wx.setStorageSync(KEYS.recent, list)
+  sync.afterWrite('recent')
+}
+
+// 批量任务计入打印历史：一条记录，count = 成功生成的张数；返回记录 id（重试追加用）
+function pushBatchHistory(items, okCount) {
+  if (!items || !items.length || okCount < 1) return null
+  const norm = items.map((p) => papers.normalizeParams(p))
+  const id = `b_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+  let list = getHistory()
+  list.unshift({ batch: true, id, items: norm, count: okCount, time: Date.now(), dpi: 0 })
+  if (list.length > HISTORY_LIMIT) list = list.slice(0, HISTORY_LIMIT)
+  wx.setStorageSync(KEYS.history, list)
+  // 累计张数按成功张数计（一套 N 张成功 k 张就是 +k）
+  wx.setStorageSync(KEYS.historyTotal, (wx.getStorageSync(KEYS.historyTotal) || 0) + okCount)
+  sync.afterWrite(['history', 'historyTotal'])
+  return id
+}
+
+// 「重试失败的 k 张」成功后追加张数：**更新同一条**批量历史记录，不新记一条。
+// 否则一次批量任务会在历史里留下两条，「一套」的口径就破了。
+function bumpBatchHistory(id, add) {
+  if (!id || add < 1) return
+  const list = getHistory()
+  const idx = list.findIndex((h) => h.id === id && h.batch)
+  if (idx < 0) return
+  list[idx] = { ...list[idx], count: (list[idx].count || 0) + add }
+  wx.setStorageSync(KEYS.history, list)
+  wx.setStorageSync(KEYS.historyTotal, (wx.getStorageSync(KEYS.historyTotal) || 0) + add)
+  sync.afterWrite(['history', 'historyTotal'])
+}
+
 // 统计：累计张数（真实值，不受列表截断影响）+ 纸型分布（降序）+ 时间范围
 //
 // 口径（v1.1 多区块）：**按页计，不按区块计**。一页四宫格不等于印了 4 张，
@@ -198,13 +247,18 @@ function getHistoryStats() {
   const list = getHistory()
   const map = {}
   list.forEach((h) => {
+    // v1.5 批量记录：归入「批量一套」档，按成功张数计（与累计张数口径一致）
+    if (h.batch) {
+      map[BATCH_KEY] = (map[BATCH_KEY] || 0) + (h.count || 1)
+      return
+    }
     const key = h.layout === '1x1' ? h.params.blocks[0].type : MULTI_KEY
     map[key] = (map[key] || 0) + 1
   })
   const byType = Object.keys(map)
     .map((k) => ({
       type: k,
-      name: k === MULTI_KEY ? '多区块版面' : (papers.PAPERS[k] ? papers.PAPERS[k].name : k),
+      name: k === MULTI_KEY ? '多区块版面' : (k === BATCH_KEY ? '批量一套' : (papers.PAPERS[k] ? papers.PAPERS[k].name : k)),
       count: map[k],
     }))
     .sort((a, b) => b.count - a.count)
@@ -224,4 +278,5 @@ module.exports = {
   getFavs, isFav, toggleFav,
   getRecent, pushRecent, RECENT_LIMIT,
   getHistory, pushHistory, clearHistory, getHistoryStats, HISTORY_LIMIT,
+  pushBatchRecent, pushBatchHistory, bumpBatchHistory,
 }

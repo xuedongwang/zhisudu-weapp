@@ -26,6 +26,7 @@ const LIMITS = {
   templates: 20,
   recent: 10,
   history: 50,
+  batch: 9, // v1.5 批量导出单次上限（结果页九宫格；同时给 KEEP_EXPORTS 的保留数定了下限）
 }
 
 // 需要跨设备同步的字段。

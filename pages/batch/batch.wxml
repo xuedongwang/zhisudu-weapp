@@ -1,0 +1,73 @@
+<!-- pages/batch/batch.wxml -->
+<view class="page">
+
+  <!-- ==================== 勾选态 ==================== -->
+  <block wx:if="{{mode === 'pick'}}">
+    <view class="card tip-card">
+      <view class="tip-title">一次打一套：勾选最近生成 / 打印历史里的纸，按列表顺序逐张生成</view>
+      <view class="tip-sub">最多 {{batchMax}} 张 · 顺序即相册保存顺序（打印店交付顺序）</view>
+    </view>
+
+    <view class="card empty" wx:if="{{!entries.length}}">
+      <view>还没有可勾选的记录</view>
+      <view class="empty-sub">先去生成一张纸，回来就能整套多选</view>
+    </view>
+
+    <view class="card" wx:if="{{entries.length}}">
+      <view class="pick-item {{item.picked ? 'on' : ''}}" wx:for="{{entries}}" wx:key="key"
+            data-index="{{index}}" bindtap="toggle" hover-class="pressed">
+        <view class="picon">
+          <image wx:if="{{item.thumb}}" src="{{item.thumb}}" mode="aspectFit" />
+          <view wx:else class="picon-ph" />
+        </view>
+        <view class="pinfo">
+          <view class="pname">{{item.title}}</view>
+          <view class="pdesc">{{item.sub}}</view>
+        </view>
+        <view class="pcheck">{{item.picked ? '✓' : ''}}</view>
+      </view>
+    </view>
+
+    <view class="bottom-bar">
+      <view class="sel-info">已选 {{selCount}} / {{batchMax}} 张</view>
+      <button class="btn btn-primary btn-start" bindtap="start" disabled="{{!selCount}}" hover-class="none">开始生成</button>
+    </view>
+  </block>
+
+  <!-- ==================== 结果态 ==================== -->
+  <block wx:if="{{mode === 'result'}}">
+    <view class="card tip-card">
+      <view class="tip-title" wx:if="{{!failCount}}">{{okCount}} 张全部生成成功</view>
+      <view class="tip-title warn" wx:else>成功 {{okCount}} 张 · 失败 {{failCount}} 张</view>
+      <view class="tip-sub" wx:if="{{failCount}}">失败的已单独列出，可点「重试失败的 {{failCount}} 张」；未全部成功前请勿当作完成</view>
+      <view class="tip-sub" wx:else>微信每次只能保存一张，点「全部存相册」将逐张保存，请勿中途退出</view>
+    </view>
+
+    <view class="grid">
+      <view class="cell {{item.ok ? '' : 'bad'}}" wx:for="{{results}}" wx:key="index"
+            data-index="{{index}}" bindtap="preview">
+        <image wx:if="{{item.ok}}" src="{{item.tempPath}}" mode="aspectFit" />
+        <view wx:else class="cell-err">
+          <view class="cell-err-ic">⚠</view>
+          <view class="cell-err-t">{{item.title}}</view>
+        </view>
+        <view class="cell-tag saved" wx:if="{{item.saved}}">✓ 已存</view>
+        <view class="cell-tag savefail" wx:if="{{item.saveFail}}">保存失败</view>
+      </view>
+    </view>
+
+    <view class="bottom-bar">
+      <button class="btn btn-plain btn-retry" wx:if="{{failCount}}" bindtap="retryFailed" disabled="{{running}}" hover-class="none">重试失败的 {{failCount}} 张</button>
+      <button class="btn btn-plain btn-done" wx:if="{{!failCount}}" bindtap="done" hover-class="none">完成</button>
+      <button class="btn btn-primary btn-saveall" bindtap="saveAll" disabled="{{saving || !okCount}}" hover-class="none">全部存相册</button>
+    </view>
+  </block>
+
+  <!-- 生成中遮罩（首轮与重试共用） -->
+  <view class="mask" wx:if="{{running}}">
+    <view class="mask-box">
+      <view class="mask-t">{{progress}}</view>
+      <view class="mask-s">逐张绘制导出，请稍候</view>
+    </view>
+  </view>
+</view>

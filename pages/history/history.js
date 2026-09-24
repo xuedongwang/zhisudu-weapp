@@ -59,6 +59,24 @@ Page({
   _refresh() {
     const stats = store.getHistoryStats()
     const list = store.getHistory().map((h) => {
+      // v1.5 批量记录：一条流水代表「一套」，缩略图用第一张，文案含成功张数
+      if (h.batch) {
+        const names = []
+        h.items.forEach((p) => {
+          const n = (papers.PAPERS[p.blocks[0].type] || {}).name || p.blocks[0].type
+          if (names.indexOf(n) < 0) names.push(n)
+        })
+        return {
+          id: h.id,
+          batch: true,
+          items: h.items,
+          type: '__batch__',
+          params: h.items[0],
+          title: `批量一套 · ${h.count} 张`,
+          sub: `${names.join(' · ')} · ${fmtTime(h.time)}`,
+          thumb: '',
+        }
+      }
       // 整页文案（含规格/版式/多区块）统一由 papers.describePage 生成
       const d = papers.describePage(h.params)
       return {
@@ -88,6 +106,13 @@ Page({
     const idx = e.currentTarget.dataset.index
     const item = this.data.history[idx]
     if (!item) return
+    // v1.5 批量记录：整套带去批量导出页（参数可能很长，走 globalData 不走 URL）
+    if (item.batch) {
+      track.report('paper_select', { paper_type: '__batch__', source: 'history' })
+      getApp().globalData.batchSeed = item.items
+      wx.navigateTo({ url: '/pages/batch/batch?seed=1' })
+      return
+    }
     track.report('paper_select', { paper_type: item.type, source: 'history' })
     track.report('template_reuse', { paper_type: item.type })
     const params = encodeURIComponent(JSON.stringify(item.params))
@@ -112,5 +137,10 @@ Page({
 
   goHome() {
     wx.switchTab({ url: '/pages/home/home' })
+  },
+
+  // v1.5 批量导出入口
+  goBatch() {
+    wx.navigateTo({ url: '/pages/batch/batch' })
   },
 })

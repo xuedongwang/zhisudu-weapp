@@ -178,9 +178,10 @@ function mergeFirst(field, localVal, cloudVal) {
   // 模板 / 最近 / 历史：按业务键去重 → 按时间降序 → 截断到上限
   //   模板与最近用「整套参数签名」去重（同配置视为同一条）
   //   历史是流水，每次导出各一条，用 id 去重（老数据无 id 时退化为「签名+时间」）
+  //   v1.5 批量记录没有单一 params，用「整套签名」去重（batchSignature 含顺序）
   const keyOf = field === 'history'
-    ? (e) => e.id || `${papers.signature(e.params)}|${e.time}`
-    : (e) => papers.signature(e.params)
+    ? (e) => e.id || (e.batch ? `b|${papers.batchSignature(e.items)}|${e.time}` : `${papers.signature(e.params)}|${e.time}`)
+    : (e) => (e.batch ? `b|${papers.batchSignature(e.items)}` : papers.signature(e.params))
   const timeOf = field === 'templates' ? (e) => e.createdAt || 0 : (e) => e.time || 0
 
   const seen = {}

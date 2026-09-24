@@ -21,8 +21,10 @@ const THUMB_PREFIX = 'thumb_v'
 
 // 保留最近 N 张导出图。为什么不是 1：success 页持有路径用于预览/保存/分享，
 // 用户可能返回 config 再导出一次、页面栈里同时存在多个 success 页。
-// 3 是「磁盘可控」与「不删掉在用的文件」之间的折中（单张仅几十 KB）。
-const KEEP_EXPORTS = 3
+// v1.5 起批量导出一次产生最多 9 张（schema.LIMITS.batch），3 是单张时代的假设——
+// N>3 时最早的几张会在下次启动被回收，用户没存完相册回来路径就失效了。
+// 12 = 一批 9 张 + 3 张单导余量（单张几十 KB~几百 KB，磁盘可控）。
+const KEEP_EXPORTS = 12
 
 const RE_EXPORT = /^paper_(\d+)\.png$/
 const RE_AVATAR = /^avatar_(\d+)\.png$/
