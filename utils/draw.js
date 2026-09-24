@@ -18,6 +18,11 @@
 //   分支体内引用的局部变量一一对应为 env 字段，绘制调用序列完全不变。
 //   本步是纯搬家：未改任何坐标、线宽、调用次序，等价性自测（与 77ff3ed 全组合比对）证明。
 //
+// v1.3 线组基元化：每种纸型 = 线组基元 + 参数组合。基元（primXxx）只负责「把一组
+//   线/点/格画出来」，不负责设样式——样式由调用方先 applyStroke / fillStyle，基元可任意
+//   组合而不互相覆盖状态。每个基元的 canvas 调用序列与其取代的内联代码逐条一致
+//   （含 beginPath/stroke 的分组边界与线序），等价性自测（与 77ff3ed 全组合比对）证明。
+//
 // ⚠️ 重构的硬约束：**1×1 时必须与重构前逐像素一致**。box.x = margin*k、box.w = W-2*margin*k 时，
 //    居中公式 (W - n*cs)/2 恒等于 box.x + (box.w - n*cs)/2，故所有分支可直接机械替换。
 //    这是可以放心重构的前提，也是自测里要做对照验证的原因。
@@ -45,6 +50,106 @@ function gridCount(span, unit) {
   return Math.floor(span / unit)
 }
 
+// ========== 线组基元（v1.3）==========
+// 约定：基元不碰描边/填充样式，调用方先 applyStroke 或设 fillStyle 再调用。
+// ⚠️ 每个基元的 canvas 调用序列与其取代的原内联代码逐条一致（等价性自测的红线）：
+//    一样的一条 path 一次 stroke、一样的线序（先竖后横 / 逐格先对角后十字）。
+
+// 横线组：ys 中每个 y 画一条 (x1,y)-(x2,y)，累积一条 path 只 stroke 一次
+function primHLines(ctx, x1, x2, ys) {
+  ctx.beginPath()
+  for (const y of ys) {
+    ctx.moveTo(x1, y)
+    ctx.lineTo(x2, y)
+  }
+  ctx.stroke()
+}
+
+// 竖线组：xs 中每个 x 画一条 (x,y1)-(x,y2)，累积一条 path 只 stroke 一次
+function primVLines(ctx, xs, y1, y2) {
+  ctx.beginPath()
+  for (const x of xs) {
+    ctx.moveTo(x, y1)
+    ctx.lineTo(x, y2)
+  }
+  ctx.stroke()
+}
+
+// 线网：任意竖线位置组 + 横线位置组，先竖后横，累积一条 path 只 stroke 一次
+//（方格纸 / 坐标纸细线与重线的共同形态）
+function primLineMesh(ctx, xs, y1, y2, ys, x1, x2) {
+  ctx.beginPath()
+  for (const x of xs) {
+    ctx.moveTo(x, y1)
+    ctx.lineTo(x, y2)
+  }
+  for (const y of ys) {
+    ctx.moveTo(x1, y)
+    ctx.lineTo(x2, y)
+  }
+  ctx.stroke()
+}
+
+// 点阵组：网格交点画圆点，全部累积一条 path 只 fill 一次（性能要点，勿逐点 fill）。
+// 每个圆点前先 moveTo(圆心+r, 圆心) 起新子路径，否则各点会被直线连成一串。
+// 调用方先设 fillStyle。
+function primDots(ctx, sx, sy, nCols, nRows, cs, r) {
+  ctx.beginPath()
+  for (let r2 = 0; r2 <= nRows; r2++) {
+    for (let c = 0; c <= nCols; c++) {
+      const x = sx + c * cs
+      const y = sy + r2 * cs
+      ctx.moveTo(x + r, y)
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+    }
+  }
+  ctx.fill()
+}
+
+// 书法格内辅助线：逐格绘制，每格内部「先对角、后十字」，每类辅助线各自 beginPath+stroke。
+// sw: { diag: 画对角线, cross: 画十字 }。调用方先 applyStroke。
+function primCellAids(ctx, sx, sy, nCols, nRows, cs, sw) {
+  for (let r = 0; r < nRows; r++) {
+    for (let c = 0; c < nCols; c++) {
+      const x = sx + c * cs
+      const y = sy + r * cs
+      if (sw.diag) {
+        ctx.beginPath()
+        ctx.moveTo(x, y); ctx.lineTo(x + cs, y + cs)
+        ctx.moveTo(x + cs, y); ctx.lineTo(x, y + cs)
+        ctx.stroke()
+      }
+      if (sw.cross) {
+        ctx.beginPath()
+        ctx.moveTo(x + cs / 2, y); ctx.lineTo(x + cs / 2, y + cs)
+        ctx.moveTo(x, y + cs / 2); ctx.lineTo(x + cs, y + cs / 2)
+        ctx.stroke()
+      }
+    }
+  }
+}
+
+// 逐格方框（strokeRect 序列）。调用方先 applyStroke。
+function primCellFrames(ctx, sx, sy, nCols, nRows, cs) {
+  for (let r = 0; r < nRows; r++) {
+    for (let c = 0; c < nCols; c++) {
+      ctx.strokeRect(sx + c * cs, sy + r * cs, cs, cs)
+    }
+  }
+}
+
+// 谱表组：从 y 起画 lines 条平行线、间距 sp，累积一条 path 只 stroke 一次。
+// 调用方先 applyStroke。
+function primStaff(ctx, x1, x2, y, sp, lines) {
+  ctx.beginPath()
+  for (let i = 0; i < lines; i++) {
+    const ly = y + sp * i
+    ctx.moveTo(x1, ly)
+    ctx.lineTo(x2, ly)
+  }
+  ctx.stroke()
+}
+
 // ========== 纸型绘制函数（注册表成员）==========
 // 统一签名：fn(ctx, o, e)
 //   o: 区块参数 { box, type, cell, cols, cue, rows, ...extra }（纸型专属参数原样携带）
@@ -68,14 +173,10 @@ function drawHengxian(ctx, o, e) {
   if (rowH <= 0) return
   const nRows = gridCount(e.bh, rowH)
   if (nRows < 1) return
+  const ys = []
+  for (let i = 1; i <= nRows; i++) ys.push(e.T + i * rowH)
   applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-  ctx.beginPath()
-  for (let i = 1; i <= nRows; i++) {
-    const ly = e.T + i * rowH
-    ctx.moveTo(e.L, ly)
-    ctx.lineTo(e.R, ly)
-  }
-  ctx.stroke()
+  primHLines(ctx, e.L, e.R, ys)
 }
 
 // ---------- 竖线纸（每列右边一条线，最左侧留出完整一列书写空间）----------
@@ -84,14 +185,10 @@ function drawShuxian(ctx, o, e) {
   if (colW <= 0) return
   const nCols = gridCount(e.bw, colW)
   if (nCols < 1) return
+  const xs = []
+  for (let i = 1; i <= nCols; i++) xs.push(e.L + i * colW)
   applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-  ctx.beginPath()
-  for (let i = 1; i <= nCols; i++) {
-    const lx = e.L + i * colW
-    ctx.moveTo(lx, e.T)
-    ctx.lineTo(lx, e.B)
-  }
-  ctx.stroke()
+  primVLines(ctx, xs, e.T, e.B)
 }
 
 // ---------- 方格纸（等权方格，无加重线）----------
@@ -106,17 +203,12 @@ function drawFangge(ctx, o, e) {
   if (nCols < 1 || nRows < 1) return
   const sx = e.L + (e.bw - nCols * cs) / 2
   const sy = e.T + (e.bh - nRows * cs) / 2
+  const xs = []
+  for (let i = 0; i <= nCols; i++) xs.push(sx + i * cs)
+  const ys = []
+  for (let j = 0; j <= nRows; j++) ys.push(sy + j * cs)
   applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-  ctx.beginPath()
-  for (let i = 0; i <= nCols; i++) {
-    ctx.moveTo(sx + i * cs, sy)
-    ctx.lineTo(sx + i * cs, sy + nRows * cs)
-  }
-  for (let j = 0; j <= nRows; j++) {
-    ctx.moveTo(sx, sy + j * cs)
-    ctx.lineTo(sx + nCols * cs, sy + j * cs)
-  }
-  ctx.stroke()
+  primLineMesh(ctx, xs, sy, sy + nRows * cs, ys, sx, sx + nCols * cs)
 }
 
 // ---------- 点阵纸（网格交点画圆点）----------
@@ -133,16 +225,7 @@ function drawDianzhen(ctx, o, e) {
   const sy = e.T + (e.bh - nRows * cs) / 2
   const r = Math.max((e.thumb ? 0.7 : 0.22) * e.k, 0.6)
   ctx.fillStyle = e.color
-  ctx.beginPath()
-  for (let r2 = 0; r2 <= nRows; r2++) {
-    for (let c = 0; c <= nCols; c++) {
-      const x = sx + c * cs
-      const y = sy + r2 * cs
-      ctx.moveTo(x + r, y)
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-    }
-  }
-  ctx.fill()
+  primDots(ctx, sx, sy, nCols, nRows, cs, r)
 }
 
 // ---------- 空白纸（不绘制任何内容）----------
@@ -162,31 +245,11 @@ function drawTianziMizi(ctx, o, e) {
   const sy = e.T + (e.bh - nRows * cs) / 2
 
   applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-  for (let r = 0; r < nRows; r++) {
-    for (let c = 0; c < nCols; c++) {
-      const x = sx + c * cs
-      const y = sy + r * cs
-      // 对角线：仅米字格
-      if (o.type === 'mizige') {
-        ctx.beginPath()
-        ctx.moveTo(x, y); ctx.lineTo(x + cs, y + cs)
-        ctx.moveTo(x + cs, y); ctx.lineTo(x, y + cs)
-        ctx.stroke()
-      }
-      // 十字
-      ctx.beginPath()
-      ctx.moveTo(x + cs / 2, y); ctx.lineTo(x + cs / 2, y + cs)
-      ctx.moveTo(x, y + cs / 2); ctx.lineTo(x + cs, y + cs / 2)
-      ctx.stroke()
-    }
-  }
+  // 对角线仅米字格；十字两者都有（逐格先对角后十字，基元内部保持原线序）
+  primCellAids(ctx, sx, sy, nCols, nRows, cs, { diag: o.type === 'mizige', cross: true })
   // 逐格外框（实线，不受线型影响）
   applyStroke(ctx, e.color, e.frameW, 'solid', e.k)
-  for (let r = 0; r < nRows; r++) {
-    for (let c = 0; c < nCols; c++) {
-      ctx.strokeRect(sx + c * cs, sy + r * cs, cs, cs)
-    }
-  }
+  primCellFrames(ctx, sx, sy, nCols, nRows, cs)
 }
 
 // ---------- 拼音 / 英语四线三格 ----------
@@ -199,10 +262,7 @@ function drawFourLine(ctx, o, e) {
       const ly = y + (rowH / 3) * i
       const solid = i === 0 || i === 3 // 上下主线恒为实线
       applyStroke(ctx, e.color, solid ? e.mainW : e.dashW, solid ? 'solid' : e.style, e.k)
-      ctx.beginPath()
-      ctx.moveTo(e.L, ly)
-      ctx.lineTo(e.R, ly)
-      ctx.stroke()
+      primHLines(ctx, e.L, e.R, [ly])
     }
     y += rowH + gap
   }
@@ -221,10 +281,7 @@ function drawPinyintian(ctx, o, e) {
       const ly = y + (stripH / 3) * i
       const solid = i === 0 || i === 3
       applyStroke(ctx, e.color, solid ? e.mainW : e.dashW, 'solid', e.k)
-      ctx.beginPath()
-      ctx.moveTo(e.L, ly)
-      ctx.lineTo(e.R, ly)
-      ctx.stroke()
+      primHLines(ctx, e.L, e.R, [ly])
     }
     y += stripH + gap
     // 田字格行
@@ -233,17 +290,9 @@ function drawPinyintian(ctx, o, e) {
     if (nCols < 1) break
     const sx = e.L + (e.bw - nCols * cs) / 2
     applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-    for (let c = 0; c < nCols; c++) {
-      const x = sx + c * cs
-      ctx.beginPath()
-      ctx.moveTo(x + cs / 2, y); ctx.lineTo(x + cs / 2, y + cs)
-      ctx.moveTo(x, y + cs / 2); ctx.lineTo(x + cs, y + cs / 2)
-      ctx.stroke()
-    }
+    primCellAids(ctx, sx, y, nCols, 1, cs, { cross: true })
     applyStroke(ctx, e.color, e.frameW, 'solid', e.k)
-    for (let c = 0; c < nCols; c++) {
-      ctx.strokeRect(sx + c * cs, y, cs, cs)
-    }
+    primCellFrames(ctx, sx, y, nCols, 1, cs)
     y += cs + gap
   }
 }
@@ -273,18 +322,12 @@ function drawZuowen(ctx, o, e) {
   const sx = e.L + (e.bw - nCols * cs) / 2
   const sy = e.T + (e.bh - nRows * cs) / 2
   applyStroke(ctx, e.color, Math.max(0.2 * e.k * e.wt, 0.5), 'solid', e.k)
-  ctx.beginPath()
-  for (let i = 0; i <= nCols; i++) {
-    ctx.moveTo(sx + i * cs, sy)
-    ctx.lineTo(sx + i * cs, sy + nRows * cs)
-  }
-  ctx.stroke()
-  ctx.beginPath()
-  for (let r = 0; r <= nRows; r++) {
-    ctx.moveTo(sx, sy + r * cs)
-    ctx.lineTo(sx + nCols * cs, sy + r * cs)
-  }
-  ctx.stroke()
+  const xs = []
+  for (let i = 0; i <= nCols; i++) xs.push(sx + i * cs)
+  primVLines(ctx, xs, sy, sy + nRows * cs)
+  const ys = []
+  for (let r = 0; r <= nRows; r++) ys.push(sy + r * cs)
+  primHLines(ctx, sx, sx + nCols * cs, ys)
   applyStroke(ctx, e.color, e.frameW, 'solid', e.k)
   ctx.strokeRect(sx, sy, nCols * cs, nRows * cs)
 }
@@ -335,32 +378,26 @@ function drawZuobiao(ctx, o, e) {
   ctx.save()
   ctx.globalAlpha = 0.45
   applyStroke(ctx, e.color, minorW, 'solid', e.k)
-  ctx.beginPath()
+  const xsMinor = []
   for (let i = 1; i < nCols; i++) {
     if (i % MAJOR === 0) continue
-    ctx.moveTo(sx + i * cs, sy)
-    ctx.lineTo(sx + i * cs, sy + nRows * cs)
+    xsMinor.push(sx + i * cs)
   }
+  const ysMinor = []
   for (let j = 1; j < nRows; j++) {
     if (j % MAJOR === 0) continue
-    ctx.moveTo(sx, sy + j * cs)
-    ctx.lineTo(sx + nCols * cs, sy + j * cs)
+    ysMinor.push(sy + j * cs)
   }
-  ctx.stroke()
+  primLineMesh(ctx, xsMinor, sy, sy + nRows * cs, ysMinor, sx, sx + nCols * cs)
   ctx.restore()
 
   // 重线 + 外框
   applyStroke(ctx, e.color, majorW, 'solid', e.k)
-  ctx.beginPath()
-  for (let i = MAJOR; i < nCols; i += MAJOR) {
-    ctx.moveTo(sx + i * cs, sy)
-    ctx.lineTo(sx + i * cs, sy + nRows * cs)
-  }
-  for (let j = MAJOR; j < nRows; j += MAJOR) {
-    ctx.moveTo(sx, sy + j * cs)
-    ctx.lineTo(sx + nCols * cs, sy + j * cs)
-  }
-  ctx.stroke()
+  const xsMajor = []
+  for (let i = MAJOR; i < nCols; i += MAJOR) xsMajor.push(sx + i * cs)
+  const ysMajor = []
+  for (let j = MAJOR; j < nRows; j += MAJOR) ysMajor.push(sy + j * cs)
+  primLineMesh(ctx, xsMajor, sy, sy + nRows * cs, ysMajor, sx, sx + nCols * cs)
   ctx.strokeRect(sx, sy, nCols * cs, nRows * cs)
 }
 
@@ -374,13 +411,7 @@ function drawWuxianpu(ctx, o, e) {
   applyStroke(ctx, e.color, w, 'solid', e.k)
   let y = e.T
   while (y + staffH <= e.B) {
-    ctx.beginPath()
-    for (let i = 0; i < 5; i++) {
-      const ly = y + sp * i
-      ctx.moveTo(e.L, ly)
-      ctx.lineTo(e.R, ly)
-    }
-    ctx.stroke()
+    primStaff(ctx, e.L, e.R, y, sp, 5)
     y += staffH + groupGap
   }
 }
@@ -414,15 +445,14 @@ function drawKangnaier(ctx, o, e) {
   // 笔记区横线（跟随线型；横线通栏，含线索栏）
   const nRows = gridCount(bodyB - bodyT, rowH)
   if (nRows > 0) {
-    applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-    ctx.beginPath()
+    const ys = []
     for (let i = 1; i <= nRows; i++) {
       const ly = bodyT + i * rowH
       if (ly > bodyB - 0.5) break
-      ctx.moveTo(e.L, ly)
-      ctx.lineTo(e.R, ly)
+      ys.push(ly)
     }
-    ctx.stroke()
+    applyStroke(ctx, e.color, e.dashW, e.style, e.k)
+    primHLines(ctx, e.L, e.R, ys)
   }
 }
 
@@ -442,28 +472,20 @@ function drawZhoujihua(ctx, o, e) {
   ctx.strokeRect(e.L, e.T, e.bw, e.bh)
   // 列分隔线（含表头）
   applyStroke(ctx, e.color, e.dashW, e.style, e.k)
-  ctx.beginPath()
-  for (let c = 1; c < nCols; c++) {
-    const x = e.L + c * colW
-    ctx.moveTo(x, e.T)
-    ctx.lineTo(x, dataBottom)
-  }
-  ctx.stroke()
+  const xs = []
+  for (let c = 1; c < nCols; c++) xs.push(e.L + c * colW)
+  primVLines(ctx, xs, e.T, dataBottom)
   // 行分隔线
-  ctx.beginPath()
+  const ys = []
   for (let r = 1; r <= rows; r++) {
     const ly = headBottom + r * rowH
     if (ly > e.B + 0.01) break
-    ctx.moveTo(e.L, ly)
-    ctx.lineTo(e.R, ly)
+    ys.push(ly)
   }
-  ctx.stroke()
+  primHLines(ctx, e.L, e.R, ys)
   // 表头底线（实线，与内容区分隔更清楚）
   applyStroke(ctx, e.color, e.mainW, 'solid', e.k)
-  ctx.beginPath()
-  ctx.moveTo(e.L, headBottom)
-  ctx.lineTo(e.R, headBottom)
-  ctx.stroke()
+  primHLines(ctx, e.L, e.R, [headBottom])
 
   // 星期文字：逐格 clip，防止窄列时溢出到相邻列
   ctx.save()
