@@ -111,6 +111,21 @@
 }
 .swatch.on { border-color: var(--primary); }
 
+/* v1.2 背景色样片：含纯白与浅色系，需浅灰描边才能在白卡上看清边界 */
+.swatch-bg { box-shadow: inset 0 0 0 4rpx #fff, 0 0 0 2rpx #E3E3DC; }
+
+/* v1.2 水印输入框 */
+.wm-input {
+  flex: 1;
+  height: 64rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+  background: #F7F7F4;
+  border-radius: 12rpx;
+  box-sizing: border-box;
+}
+.wm-ph { color: var(--sub); font-size: 24rpx; }
+
 .export-note {
   font-size: 22rpx;
   color: var(--sub);

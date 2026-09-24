@@ -8,6 +8,11 @@
 //       页面边距由 drawPage 扣除），所有边界与居中计算都基于盒子。
 //   drawPage() 负责铺白底 + 按 papers.layoutBoxes 逐区块 clip 绘制。
 //
+// v1.2 形式层（与纸型正交的叠加层，drawPage 内按固定次序绘制）：
+//   ① 背景色（默认纯白）→ ② 背景纹理（默认无）→ ③ 区块内容 → ④ 页面边框（默认无）→ ⑤ 文字水印（默认无）
+//   另有线条粗细倍率 weight 作用于 drawBlock 的所有线宽（1.0 = 不变）。
+//   ⚠️ 全部取默认值时输出必须与 v1.1 逐像素一致——这是等价性自测守住的红线。
+//
 // ⚠️ 重构的硬约束：**1×1 时必须与重构前逐像素一致**。box.x = margin*k、box.w = W-2*margin*k 时，
 //    居中公式 (W - n*cs)/2 恒等于 box.x + (box.w - n*cs)/2，故所有分支可直接机械替换。
 //    这是可以放心重构的前提，也是自测里要做对照验证的原因。
@@ -42,7 +47,8 @@ function gridCount(span, unit) {
  *   type, cell(mm), color, style, cols,    // 区块参数
  *   cue, rows,                             // 纸型专属参数（康奈尔 / 周计划）
  *   pxPerMm,                               // dpi / 25.4
- *   thumb                                  // 缩略图模式：加粗线宽便于小尺寸辨识
+ *   thumb,                                 // 缩略图模式：加粗线宽便于小尺寸辨识
+ *   weight                                 // v1.2 线条粗细倍率（1 = 不变，缺省按 1 处理）
  * }
  */
 function drawBlock(ctx, o) {
@@ -53,6 +59,7 @@ function drawBlock(ctx, o) {
   const cols = o.cols || 1
   const cell = o.cell
   const thumb = !!o.thumb
+  const wt = o.weight || 1 // 缺省 1：所有旧调用方不传时逐像素不变
 
   const L = box.x
   const T = box.y
@@ -62,9 +69,10 @@ function drawBlock(ctx, o) {
   const bh = box.h
 
   // 线宽：外框 0.3mm、内虚线 0.28mm；缩略图模式加粗；低于 0.5px 兜底
-  const frameW = Math.max((thumb ? 0.8 : 0.3) * k, 0.5)
-  const dashW = Math.max((thumb ? 0.6 : 0.28) * k, 0.5)
-  const mainW = Math.max((thumb ? 0.9 : 0.35) * k, 0.5)
+  // v1.2：统一乘 weight 倍率。wt=1 时 x*k*1 与 x*k 浮点恒等，输出逐像素不变
+  const frameW = Math.max((thumb ? 0.8 : 0.3) * k * wt, 0.5)
+  const dashW = Math.max((thumb ? 0.6 : 0.28) * k * wt, 0.5)
+  const mainW = Math.max((thumb ? 0.9 : 0.35) * k * wt, 0.5)
 
   // ========== 基础纸型（v1.1 新增）==========
   // 五种的共同约定，与既有分支保持一致，保证同一张纸上风格统一：
@@ -286,7 +294,7 @@ function drawBlock(ctx, o) {
     if (nCols < 1 || nRows < 1) return
     const sx = L + (bw - nCols * cs) / 2
     const sy = T + (bh - nRows * cs) / 2
-    applyStroke(ctx, color, Math.max(0.2 * k, 0.5), 'solid', k)
+    applyStroke(ctx, color, Math.max(0.2 * k * wt, 0.5), 'solid', k)
     ctx.beginPath()
     for (let i = 0; i <= nCols; i++) {
       ctx.moveTo(sx + i * cs, sy)
@@ -312,7 +320,7 @@ function drawBlock(ctx, o) {
       const amp = 8 * k
       const wl = bw / 3
       const up = i % 2 === 0 ? -amp : amp
-      applyStroke(ctx, color, Math.max(0.45 * k, 1), 'dash', k)
+      applyStroke(ctx, color, Math.max(0.45 * k * wt, 1), 'dash', k)
       ctx.setLineDash([2.6 * k, 2 * k])
       ctx.beginPath()
       ctx.moveTo(L, y)
@@ -341,8 +349,8 @@ function drawBlock(ctx, o) {
     if (nCols < 1 || nRows < 1) return
     const sx = L + (bw - nCols * cs) / 2
     const sy = T + (bh - nRows * cs) / 2
-    const minorW = Math.max((thumb ? 0.5 : 0.15) * k, 0.5)
-    const majorW = Math.max((thumb ? 0.9 : 0.35) * k, 0.5)
+    const minorW = Math.max((thumb ? 0.5 : 0.15) * k * wt, 0.5)
+    const majorW = Math.max((thumb ? 0.9 : 0.35) * k * wt, 0.5)
     const MAJOR = 5 // 每 5 格一条重线
 
     // 细线（整体降低透明度，避免密格印出来发灰）
@@ -384,7 +392,7 @@ function drawBlock(ctx, o) {
     const staffH = sp * 4     // 一个谱表 5 条线 = 4 个间距
     const groupGap = Math.max(sp * 3, 7 * k) // 谱表之间留空，便于书写
     if (staffH <= 0) return
-    const w = Math.max((thumb ? 0.7 : 0.25) * k, 0.5)
+    const w = Math.max((thumb ? 0.7 : 0.25) * k * wt, 0.5)
     applyStroke(ctx, color, w, 'solid', k)
     let y = T
     while (y + staffH <= B) {
@@ -498,10 +506,102 @@ function drawBlock(ctx, o) {
   }
 }
 
+// ---------- v1.2 形式层（drawPage 内的叠加层）----------
+
 /**
- * 绘制整页：铺白底 + 按版式逐区块 clip 绘制
+ * 背景纹理：满铺浅色图案，用线色的低透明度呈现（不单独占参数）。
+ * 画在整张纸（含页边距区），因为它是「纸本身的底纹」，不是内容区装饰。
+ */
+function drawTexture(ctx, W, H, k, texture, color) {
+  if (!texture || texture === 'none') return
+  ctx.save()
+  ctx.globalAlpha = 0.12
+  const s = 5 * k
+  if (texture === 'dots') {
+    // 点阵：与点阵纸同构——全部累积到一条 path，只 fill 一次（满幅约 40×70 点）
+    ctx.fillStyle = color
+    const r = Math.max(0.3 * k, 0.5)
+    ctx.beginPath()
+    for (let y = s; y < H; y += s) {
+      for (let x = s; x < W; x += s) {
+        ctx.moveTo(x + r, y)
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+      }
+    }
+    ctx.fill()
+  } else {
+    applyStroke(ctx, color, Math.max(0.2 * k, 0.5), 'solid', k)
+    ctx.beginPath()
+    if (texture === 'grid' || texture === 'lines') {
+      for (let y = s; y < H; y += s) { ctx.moveTo(0, y); ctx.lineTo(W, y) }
+    }
+    if (texture === 'grid') {
+      for (let x = s; x < W; x += s) { ctx.moveTo(x, 0); ctx.lineTo(x, H) }
+    }
+    if (texture === 'cross') {
+      const step = s * 2
+      for (let x = -H; x < W + H; x += step) {
+        ctx.moveTo(x, 0); ctx.lineTo(x + H, H)
+        ctx.moveTo(x, H); ctx.lineTo(x + H, 0)
+      }
+    }
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+/**
+ * 页面边框：画在页缘内缩 4mm 处（内容区之外，不与格线抢位置）。
+ * double 为书法双线框：外粗内细。
+ */
+function drawBorder(ctx, W, H, k, style, color, weight) {
+  if (!style || style === 'none') return
+  const wt = weight || 1
+  const inset = 4 * k
+  if (style === 'single') {
+    applyStroke(ctx, color, Math.max(0.35 * k * wt, 0.5), 'solid', k)
+    ctx.strokeRect(inset, inset, W - inset * 2, H - inset * 2)
+  } else if (style === 'double') {
+    applyStroke(ctx, color, Math.max(0.9 * k * wt, 0.8), 'solid', k)
+    ctx.strokeRect(inset, inset, W - inset * 2, H - inset * 2)
+    const i2 = inset + 3 * k
+    applyStroke(ctx, color, Math.max(0.25 * k * wt, 0.5), 'solid', k)
+    ctx.strokeRect(i2, i2, W - i2 * 2, H - i2 * 2)
+  } else if (style === 'bold') {
+    applyStroke(ctx, color, Math.max(1.4 * k * wt, 1), 'solid', k)
+    ctx.strokeRect(inset, inset, W - inset * 2, H - inset * 2)
+  }
+}
+
+/**
+ * 文字水印：页面中央单条旋转文字，最后绘制（压在内容之上）。
+ * 字号随字数自适应（字多字小），上下限防极端。
+ */
+function drawWatermark(ctx, W, H, k, o) {
+  const text = (o.text || '').trim()
+  if (!text) return
+  const alpha = o.alpha === undefined ? 0.12 : o.alpha
+  const angle = o.angle === undefined ? -45 : o.angle
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.fillStyle = o.color
+  ctx.translate(W / 2, H / 2)
+  ctx.rotate((angle * Math.PI) / 180)
+  const span = Math.min(W, H)
+  let fs = (span * 0.85) / Math.max(text.length, 1)
+  fs = Math.min(Math.max(fs, 6 * k), span * 0.4)
+  ctx.font = `${fs}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, 0, 0)
+  ctx.restore()
+}
+
+/**
+ * 绘制整页：背景色 → 背景纹理 → 按版式逐区块 clip 绘制 → 页面边框 → 文字水印
  * o: {
  *   size, orient, margin, color, style, layout, blocks,
+ *   weight, bgColor, bgTexture, border, wmText, wmAlpha, wmAngle,   // v1.2 形式层（均可缺省，缺省=旧版表现）
  *   widthPx, heightPx, pxPerMm, thumb
  * }
  */
@@ -509,12 +609,18 @@ function drawPage(ctx, o) {
   const k = o.pxPerMm
   const W = o.widthPx
   const H = o.heightPx
+  const weight = o.weight || 1
 
+  // ① 背景色：默认纯白，与 v1.1 及之前逐像素一致
   ctx.save()
-  ctx.fillStyle = '#FFFFFF'
+  ctx.fillStyle = o.bgColor || '#FFFFFF'
   ctx.fillRect(0, 0, W, H)
   ctx.restore()
 
+  // ② 背景纹理：默认无
+  drawTexture(ctx, W, H, k, o.bgTexture, o.color)
+
+  // ③ 区块内容
   // 盒子直接在**像素**上算：1x1 时恒等于 (margin*k, margin*k, W-2*margin*k, H-2*margin*k)，
   // 与重构前的 m / uw / uh 完全一致，不引入 mm→px 的取整误差
   const boxes = papers.layoutBoxes(o.layout, W, H, o.margin * k, papers.BLOCK_GAP_MM * k)
@@ -538,9 +644,16 @@ function drawPage(ctx, o) {
       style: o.style,
       pxPerMm: k,
       thumb: o.thumb,
+      weight,
     })
     ctx.restore()
   })
+
+  // ④ 页面边框：默认无
+  drawBorder(ctx, W, H, k, o.border, o.color, weight)
+
+  // ⑤ 文字水印：默认无
+  drawWatermark(ctx, W, H, k, { text: o.wmText, alpha: o.wmAlpha, angle: o.wmAngle, color: o.color })
 }
 
 /**
@@ -554,6 +667,13 @@ function drawPaper(ctx, o) {
     margin: o.margin,
     color: o.color,
     style: o.style,
+    weight: o.weight,
+    bgColor: o.bgColor,
+    bgTexture: o.bgTexture,
+    border: o.border,
+    wmText: o.wmText,
+    wmAlpha: o.wmAlpha,
+    wmAngle: o.wmAngle,
     layout: papers.DEFAULT_LAYOUT,
     blocks: [{ type: o.type, cell: o.cell, cols: o.cols, cue: o.cue, rows: o.rows }],
     widthPx: o.widthPx,
@@ -563,4 +683,4 @@ function drawPaper(ctx, o) {
   })
 }
 
-module.exports = { drawPage, drawBlock, drawPaper, dashPattern, applyStroke }
+module.exports = { drawPage, drawBlock, drawPaper, dashPattern, applyStroke, drawTexture, drawBorder, drawWatermark }

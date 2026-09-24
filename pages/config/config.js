@@ -30,6 +30,26 @@ Page({
     colors: papers.COLORS,
     styles: papers.STYLES,
 
+    // ---------- 形式层（v1.2） ----------
+    weight: 1,
+    weightMin: papers.WEIGHT.min,
+    weightMax: papers.WEIGHT.max,
+    weightStep: papers.WEIGHT.step,
+    bgColor: '#FFFFFF',
+    bgTexture: 'none',
+    border: 'none',
+    bgColors: papers.BG_COLORS,
+    bgTextures: papers.BG_TEXTURES,
+    borders: papers.BORDERS,
+    themes: papers.THEMES,
+    wmText: '',
+    wmAlpha: papers.WATERMARK.alphaDef,
+    wmAlphaMin: papers.WATERMARK.alphaMin,
+    wmAlphaMax: papers.WATERMARK.alphaMax,
+    wmAngle: papers.WATERMARK.angleDef,
+    wmAngleMin: papers.WATERMARK.angleMin,
+    wmAngleMax: papers.WATERMARK.angleMax,
+
     // ---------- 区块 ----------
     blocks: [],        // 展示用：[{type, shortName, cell, ...}]
     active: 0,         // 当前编辑的区块下标
@@ -136,6 +156,14 @@ Page({
       margin: p.margin,
       color: p.color,
       style: p.style,
+      // v1.2 形式层：直接映射归一化后的参数（normalizeParams 已保证必有值）
+      weight: p.weight,
+      bgColor: p.bgColor,
+      bgTexture: p.bgTexture,
+      border: p.border,
+      wmText: p.wmText,
+      wmAlpha: p.wmAlpha,
+      wmAngle: p.wmAngle,
       blocks,
       active: this._active,
       multi: p.layout !== '1x1',
@@ -214,6 +242,13 @@ Page({
       margin: p.margin,
       color: p.color,
       style: p.style,
+      weight: p.weight,
+      bgColor: p.bgColor,
+      bgTexture: p.bgTexture,
+      border: p.border,
+      wmText: p.wmText,
+      wmAlpha: p.wmAlpha,
+      wmAngle: p.wmAngle,
       layout: p.layout,
       blocks: p.blocks,
       widthPx: w,
@@ -277,6 +312,68 @@ Page({
   onStyle(e) {
     track.reportParamChange(this._curType(), 'style')
     this._params.style = e.currentTarget.dataset.v
+    this._syncView()
+    this._drawPreview()
+  },
+
+  // ---------- 形式层事件（v1.2） ----------
+  // 主题：一键套用一组外观参数。主题不是存储字段——套用后各项仍可独立微调，
+  // 因此 chips 没有「选中态」、也不参与 signature（参数字段本身已能完整表达外观）。
+  onTheme(e) {
+    const t = papers.THEMES.find((x) => x.key === e.currentTarget.dataset.v)
+    if (!t) return
+    track.reportParamChange(this._curType(), 'theme')
+    Object.assign(this._params, {
+      color: t.params.color,
+      style: t.params.style,
+      weight: t.params.weight,
+      bgColor: t.params.bgColor,
+      bgTexture: t.params.bgTexture,
+      border: t.params.border,
+    })
+    this._syncView()
+    this._drawPreview()
+  },
+  onWeightInput(e) {
+    track.reportParamChange(this._curType(), 'weight')
+    this._params.weight = parseFloat(e.detail.value)
+    this._syncView()
+    this._drawPreview()
+  },
+  onBgColor(e) {
+    track.reportParamChange(this._curType(), 'bgColor')
+    this._params.bgColor = e.currentTarget.dataset.v
+    this._syncView()
+    this._drawPreview()
+  },
+  onBgTexture(e) {
+    track.reportParamChange(this._curType(), 'bgTexture')
+    this._params.bgTexture = e.currentTarget.dataset.v
+    this._syncView()
+    this._drawPreview()
+  },
+  onBorder(e) {
+    track.reportParamChange(this._curType(), 'border')
+    this._params.border = e.currentTarget.dataset.v
+    this._syncView()
+    this._drawPreview()
+  },
+  // 水印文字：bindinput 逐键触发，直接重绘（与滑杆同一节奏）。
+  // ⚠️ 水印内容属用户私有文本，**不做埋点上报**；只调参数、不发事件。
+  onWmText(e) {
+    this._params.wmText = e.detail.value
+    this._syncView()
+    this._drawPreview()
+  },
+  onWmAlphaInput(e) {
+    track.reportParamChange(this._curType(), 'wmAlpha')
+    this._params.wmAlpha = parseFloat(e.detail.value)
+    this._syncView()
+    this._drawPreview()
+  },
+  onWmAngleInput(e) {
+    track.reportParamChange(this._curType(), 'wmAngle')
+    this._params.wmAngle = parseFloat(e.detail.value)
     this._syncView()
     this._drawPreview()
   },

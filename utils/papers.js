@@ -4,6 +4,9 @@
 // 参数结构（v1.1 起，页面级 + 区块级两层）：
 //   {
 //     size, orient, margin, color, style,        // 页面级
+//     weight,                                    // v1.2 线条粗细倍率（1 = 与旧版逐像素一致）
+//     bgColor, bgTexture, border,                // v1.2 形式层：背景色 / 背景纹理 / 页面边框
+//     wmText, wmAlpha, wmAngle,                  // v1.2 形式层：文字水印（wmText 为空即关闭）
 //     layout,                                    // 版式：1x1 / 2x1 / 3x1 / 2x2
 //     blocks: [ { type, cell, cols?, ...extra } ] // 区块级，数组长度由 layout 决定
 //   }
@@ -12,6 +15,7 @@
 //
 // ⚠️ 为什么 color/style 放在页面级而不是区块级：一页纸通常只用一种笔色，
 // 放页面级能让「换颜色」只改一次；若放区块级，四宫格要改 4 次。cell/cols/extra 才随纸型走。
+// v1.2 形式层同理：背景 / 边框 / 水印都是整页属性，没有「某一格用水印」的需求。
 
 // ---------- 纸张规格（FR-17）----------
 // A4 与既有实现逐值一致（300DPI = 2480×3508），扩展规格按 mm×dpi/25.4 现算
@@ -261,13 +265,19 @@ const PAPERS = {
   },
 }
 
-// 线条颜色
+// 线条颜色（v1.2 由 5 色扩至 11 色；新增值对存量无影响——旧值仍在列）
 const COLORS = [
   { value: '#333333', name: '黑' },
   { value: '#9A9A92', name: '灰' },
+  { value: '#C8C8C0', name: '浅灰' },
   { value: '#D9534F', name: '红' },
+  { value: '#B54534', name: '朱砂' },
+  { value: '#D97B29', name: '橙' },
   { value: '#3B6FB5', name: '蓝' },
+  { value: '#7FA8D9', name: '浅蓝' },
   { value: '#2E8B57', name: '绿' },
+  { value: '#8B6B4A', name: '棕' },
+  { value: '#7B5EA7', name: '紫' },
 ]
 
 // 线条样式
@@ -275,6 +285,70 @@ const STYLES = [
   { value: 'solid', name: '实线' },
   { value: 'dash', name: '虚线' },
   { value: 'dot', name: '点线' },
+]
+
+// ---------- 形式层（v1.2）----------
+// 全部是「叠加在任意纸型上的层」，与纸型正交：背景在最下，边框/水印在最上。
+// 所有默认值都保证输出与 v1.1 逐像素一致（白底 / 无纹理 / 无边框 / 无水印 / 粗细 ×1），
+// 这是等价性自测要守住的红线。
+
+// 线条粗细（倍率）：1.0 = 与 v1.1 及之前完全一致
+const WEIGHT = { min: 0.6, max: 2, def: 1, step: 0.2 }
+
+// 背景颜色：打印友好，只放浅色（深色底既费墨又让格线发闷）
+const BG_COLORS = [
+  { value: '#FFFFFF', name: '白' },
+  { value: '#FAF3DD', name: '米黄' },
+  { value: '#FFF8EC', name: '米白' },
+  { value: '#F0F6FB', name: '浅蓝' },
+  { value: '#F2F7F0', name: '浅绿' },
+  { value: '#FBF3F3', name: '浅粉' },
+  { value: '#F5F5F3', name: '浅灰' },
+]
+
+// 背景纹理：满铺浅色图案，用线色的低透明度呈现，不单独占参数
+const BG_TEXTURES = [
+  { value: 'none', name: '无' },
+  { value: 'grid', name: '方格' },
+  { value: 'dots', name: '点阵' },
+  { value: 'lines', name: '横线' },
+  { value: 'cross', name: '交叉' },
+]
+
+// 页面边框：画在页缘内缩 4mm 处（内容区之外，不与格线抢位置）
+const BORDERS = [
+  { value: 'none', name: '无' },
+  { value: 'single', name: '细框' },
+  { value: 'double', name: '双线框' },
+  { value: 'bold', name: '加粗框' },
+]
+
+// 文字水印默认值（wmText 为空 = 关闭）
+const WATERMARK = {
+  alphaMin: 0.05, alphaMax: 0.3, alphaDef: 0.12,
+  angleMin: -60, angleMax: 60, angleDef: -45,
+  textMax: 12,
+}
+
+// 主题：一键套用一组形式层参数。**不是存储字段**——套用后各参数独立可调、
+// 互不相欠；若把 theme 存进参数，微调任意一项后 theme 就名不副实，反而要多处理一个状态。
+const THEMES = [
+  {
+    key: 'classic', name: '经典',
+    params: { color: '#333333', style: 'solid', weight: 1, bgColor: '#FFFFFF', bgTexture: 'none', border: 'none' },
+  },
+  {
+    key: 'mihuang', name: '米黄护眼',
+    params: { color: '#8B6B4A', style: 'solid', weight: 1, bgColor: '#FAF3DD', bgTexture: 'none', border: 'none' },
+  },
+  {
+    key: 'qianlan', name: '浅蓝笔记',
+    params: { color: '#3B6FB5', style: 'solid', weight: 1, bgColor: '#F0F6FB', bgTexture: 'none', border: 'none' },
+  },
+  {
+    key: 'zhusha', name: '朱砂书法',
+    params: { color: '#B54534', style: 'solid', weight: 1, bgColor: '#FFF8EC', bgTexture: 'none', border: 'double' },
+  },
 ]
 
 // 兼容保留：A4 尺寸常量（旧代码引用）
@@ -301,6 +375,14 @@ function defaultParams(key) {
     margin: 10,
     color: COLORS[0].value,
     style: STYLES[0].value,
+    // v1.2 形式层默认值：全部保证输出与 v1.1 逐像素一致
+    weight: WEIGHT.def,
+    bgColor: BG_COLORS[0].value,
+    bgTexture: 'none',
+    border: 'none',
+    wmText: '',
+    wmAlpha: WATERMARK.alphaDef,
+    wmAngle: WATERMARK.angleDef,
     layout: DEFAULT_LAYOUT,
     blocks: [defaultBlock(key || 'tianzige')],
   }
@@ -345,6 +427,15 @@ function normalizeParams(raw, fallbackType) {
   const margin = clampNum(src.margin, 5, 25, 10)
   const color = COLORS.some((c) => c.value === src.color) ? src.color : COLORS[0].value
   const style = STYLES.some((s) => s.value === src.style) ? src.style : STYLES[0].value
+  // v1.2 形式层：weight/wmAlpha 要显式取整——滑杆可能给出 1.2000000000000002 这类浮点，
+  // 若不取整，同一配置的 signature 会出现两种写法，去重与「参数未修改」判断都会失效
+  const weight = Math.round(clampNum(src.weight, WEIGHT.min, WEIGHT.max, WEIGHT.def) * 10) / 10
+  const bgColor = BG_COLORS.some((c) => c.value === src.bgColor) ? src.bgColor : BG_COLORS[0].value
+  const bgTexture = BG_TEXTURES.some((t) => t.value === src.bgTexture) ? src.bgTexture : 'none'
+  const border = BORDERS.some((b) => b.value === src.border) ? src.border : 'none'
+  const wmText = String(src.wmText == null ? '' : src.wmText).trim().slice(0, WATERMARK.textMax)
+  const wmAlpha = Math.round(clampNum(src.wmAlpha, WATERMARK.alphaMin, WATERMARK.alphaMax, WATERMARK.alphaDef) * 100) / 100
+  const wmAngle = Math.round(clampNum(src.wmAngle, WATERMARK.angleMin, WATERMARK.angleMax, WATERMARK.angleDef))
   // 旧结构必然是单区块，强制 1x1
   const layout = legacy ? DEFAULT_LAYOUT : findLayout(src.layout).key
 
@@ -362,7 +453,7 @@ function normalizeParams(raw, fallbackType) {
   while (blocks.length < need) blocks.push(normalizeBlock({ type: blocks[0].type }, blocks[0].type))
   if (blocks.length > need) blocks = blocks.slice(0, need)
 
-  return { size, orient, margin, color, style, layout, blocks }
+  return { size, orient, margin, color, style, weight, bgColor, bgTexture, border, wmText, wmAlpha, wmAngle, layout, blocks }
 }
 
 // 去重签名：固定键序，保证同一配置不同来源得到同一签名
@@ -381,7 +472,10 @@ function signature(raw) {
   })
   return JSON.stringify({
     size: n.size, orient: n.orient, margin: n.margin,
-    color: n.color, style: n.style, layout: n.layout, blocks,
+    color: n.color, style: n.style, weight: n.weight,
+    bgColor: n.bgColor, bgTexture: n.bgTexture, border: n.border,
+    wmText: n.wmText, wmAlpha: n.wmAlpha, wmAngle: n.wmAngle,
+    layout: n.layout, blocks,
   })
 }
 
@@ -412,6 +506,22 @@ function colorName(v) {
 function styleName(v) {
   const s = STYLES.find((x) => x.value === v)
   return s ? s.name : ''
+}
+
+// 形式层名称小助手（describePage 用）：只在非默认时出现，默认值不占文案
+function bgColorName(v) {
+  const c = BG_COLORS.find((x) => x.value === v)
+  return c && c.value !== BG_COLORS[0].value ? `${c.name}底` : ''
+}
+
+function bgTextureName(v) {
+  const t = BG_TEXTURES.find((x) => x.value === v)
+  return t && t.value !== 'none' ? `${t.name}纹` : ''
+}
+
+function borderName(v) {
+  const b = BORDERS.find((x) => x.value === v)
+  return b && b.value !== 'none' ? b.name : ''
 }
 
 // 区块文案：主行「纸型 · 参数」，如「田字格 · 格宽12mm」
@@ -455,6 +565,16 @@ function describePage(raw) {
   if (cn) sub.push(cn)
   const sn = styleName(n.style)
   if (sn) sub.push(sn)
+  // v1.2 形式层：只在非默认时追加，默认（白底/无纹理/无边框/无水印/×1）不占文案——
+  // 这样 v1.2 之前存下的存量条目文案一个字都不变
+  const bgc = bgColorName(n.bgColor)
+  if (bgc) sub.push(bgc)
+  const bgt = bgTextureName(n.bgTexture)
+  if (bgt) sub.push(bgt)
+  const bn = borderName(n.border)
+  if (bn) sub.push(bn)
+  if (n.wmText) sub.push('水印')
+  if (n.weight !== WEIGHT.def) sub.push(n.weight > WEIGHT.def ? `粗×${n.weight}` : `细×${n.weight}`)
 
   return { title, sub: sub.join(' · '), size: s, layout: l }
 }
@@ -486,6 +606,7 @@ function pixelSize(sizeKey, orient, dpi) {
 
 module.exports = {
   PAPERS, CATEGORIES, COLORS, STYLES, SIZES, LAYOUTS, A4,
+  WEIGHT, BG_COLORS, BG_TEXTURES, BORDERS, WATERMARK, THEMES,
   DEFAULT_SIZE, DEFAULT_LAYOUT, BLOCK_GAP_MM,
   blockCount, findLayout, findSize, pageSizeMm, layoutBoxes,
   defaultBlock, defaultParams, normalizeBlock, normalizeParams, normalizeEntry, signature,
