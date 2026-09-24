@@ -89,7 +89,7 @@
 }
 .chips { display: flex; gap: 16rpx; flex-wrap: wrap; }
 
-/* 区块纸型横向滚动：17 种纸型放不下一行，用 scroll-x + inline-block（flex 会撑破容器） */
+/* 区块纸型横向滚动：24 种纸型放不下一行，用 scroll-x + inline-block（flex 会撑破容器） */
 .paper-row {
   width: 100%;
   white-space: nowrap;
