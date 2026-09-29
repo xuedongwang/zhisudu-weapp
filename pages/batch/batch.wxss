@@ -217,3 +217,63 @@
 .page {
   padding-bottom: 160rpx;
 }
+
+/* ==================== 响应式：大屏（v2.0）====================
+   三档口径 / 「大屏 px = 小屏 rpx ÷ 2」换算律 / 「媒体查询必须放末尾」等依据，
+   见 app.wxss 顶部注释。
+   九宫格维持固定 3 列：「一次打一套 ≤9 张」是语义，不做瀑布流。
+   本页用默认的 .page-body（大屏上限 640px，不挂 -wide 变体）——
+   九宫格 3 列在 640px 下每格约 208px，接近手机上的观感；放到 880px 每格 290px
+   会让整屏装不下、失去「一屏看完一套」的用途。 */
+@media (min-width: 600px) {
+  .page { padding: 12px 12px 0; padding-bottom: 80px; }
+
+  /* 吸底栏是 position: fixed，`margin: 0 auto` 对它**无效**——
+     必须同时给 left:0 + right:0 + margin auto，max-width 才会起居中作用 */
+  .bottom-bar {
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 640px;
+    gap: 10px;
+    padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .tip-card { margin-bottom: 12px; }
+  .tip-title { font-size: 14px; }
+  .tip-sub { margin-top: 4px; font-size: 12px; }
+  .card.empty { padding: 30px 14px; }
+  .empty-sub { margin-top: 6px; font-size: 12px; }
+
+  .pick-item { padding: 10px 0; }
+  .picon { width: 44px; height: 59px; border-radius: 5px; }
+  .pinfo { margin-left: 10px; }
+  .pname { font-size: 14px; }
+  .pdesc { margin-top: 3px; font-size: 11px; }
+  .pcheck {
+    width: 22px;
+    height: 22px;
+    border-width: 1px;
+    margin-left: 10px;
+    font-size: 13px;
+    line-height: 22px;
+  }
+
+  /* 九宫格：间距 16rpx → 8px，2 个间隙共 16px；末尾 1px 冗余防 1/64px 取整换行 */
+  .grid { gap: 8px; }
+  .cell {
+    width: calc((100% - 16px) / 3 - 1px);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(40, 40, 30, 0.06);
+  }
+  .cell-err { padding: 6px; }
+  .cell-err-ic { font-size: 20px; }
+  .cell-err-t { margin-top: 4px; font-size: 10px; }
+  .cell-tag { font-size: 10px; padding: 3px 0; }
+
+  .sel-info { font-size: 13px; }
+  .mask { padding: 24px 32px; }
+  .mask-t { font-size: 15px; }
+  .mask-s { margin-top: 6px; font-size: 12px; }
+}

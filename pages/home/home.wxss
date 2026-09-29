@@ -169,7 +169,7 @@
   transform: scale(0.96);
 }
 
-/* ==================== 响应式：大屏多列（v1.5）====================
+/* ==================== 响应式：大屏（v2.0）====================
    为什么放在文件末尾：媒体查询里的规则与上面的 `.paper-thumb` 等**同权重**，
    CSS 同权重靠后者覆盖，写在前面会被后面的基础样式盖掉（这是个很容易踩的坑）。
 
@@ -179,22 +179,53 @@
 
    ⚠️ 只在「显示区域真的这么宽」时才命中：
    - 手机竖屏（320~430pt）永远不命中 → **对手机端零影响**；
-   - 微信 iPad 版默认以手机尺寸的小窗运行小程序（app.json 未开 `resizable`），
-     也不会命中；要真正拿到宽显示区域需在 app.json 加 `"resizable": true`
-     （基础库 2.3.0+ 支持 iPad 旋转；2.21.3+ 在 Windows/Mac/车机/WMPF 启用大屏模式）。
+   - iPad 需 app.json 根节点 `"resizable": true` 才会以真实宽显示区域运行
+     （v2.0 已配置）；否则小程序始终以小窗运行，这些分支不会命中。
 
-   ⚠️ 遗留：字号/内边距仍是 rpx，在 ≥768px 的屏上会跟着屏宽等比放大
-   （rpx 的定义就是 750rpx = 整个屏宽，768pt 的 iPad 上 750rpx = 768px，
-   等于手机上的 2 倍）。只改列数能缓解「一张卡占满整屏」，但不等于完整的大屏适配；
-   要彻底解决需在本分支内把字号/内边距也改成 px——方案见《响应式布局方案-v1.md》。 */
+   ⚠️ 间距与元素尺寸在本分支一律切 px，取值 = 上方同名属性的 rpx 值 ÷ 2
+   （换算律依据见 app.wxss 顶部）：rpx 的定义是 750rpx = 屏宽，768pt 的 iPad 上
+   28rpx = 28.7px（手机的近 2 倍）；「÷ 2」等价于把 iPhone 375pt 的观感原样搬到
+   大屏并不再放大。只改列数而不 px 化，等于把「字号 2 倍的手机版 UI」暴露在大屏上。 */
 @media (min-width: 600px) {
-  .paper-grid { gap: 28rpx; }
-  .paper-card { width: calc((100% - 56rpx) / 3 - 2rpx); }
+  .scroll { padding: 0 16px; }
+  .home-head { padding: 12px 20px 4px; gap: 10px; }
+  .home-head .name { font-size: 20px; letter-spacing: 1px; }
+  .home-head .slogan { font-size: 12px; }
+
+  .fav-chip {
+    gap: 4px;
+    padding: 7px 14px;
+    font-size: 13px;
+    border-radius: 20px;
+    margin-right: 8px;
+    box-shadow: 0 3px 12px rgba(40, 40, 30, 0.08);
+  }
+
+  /* 3 列：间距 24rpx → 12px，故 2 个间隙共 24px；末尾 1px 冗余防 1/64px 取整换行 */
+  .paper-grid { gap: 12px; }
+  .paper-card {
+    width: calc((100% - 24px) / 3 - 1px);
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(40, 40, 30, 0.08);
+  }
   /* 3 列后卡片变窄，缩略图若继续用固定 320rpx 高会被拉成长条，
      改为按 A4 竖版比例（3:4）跟着卡宽自适应 */
-  .paper-thumb { height: auto; aspect-ratio: 3 / 4; }
+  .paper-thumb { height: auto; aspect-ratio: 3 / 4; border-radius: 8px; }
+  .thumb-loading { border-radius: 4px; }
+  .pname { font-size: 14px; margin-top: 9px; }
+  .pdesc { font-size: 11px; margin-top: 2px; }
+
+  .recent-card { padding: 4px 14px; }
+  .recent-item { gap: 10px; padding: 10px 0; }
+  .ricon { width: 36px; height: 50px; border-radius: 5px; }
+  .ricon-ph { border-radius: 3px; }
+  .rname { font-size: 14px; }
+  .rdesc { margin-top: 4px; font-size: 11px; }
+  .rbtn { height: 28px; padding: 0 12px; border-radius: 14px; font-size: 12px; }
 }
+
 @media (min-width: 900px) {
-  .paper-grid { gap: 28rpx; }
-  .paper-card { width: calc((100% - 84rpx) / 4 - 2rpx); }
+  /* 4 列：间距仍是 12px，3 个间隙共 36px */
+  .paper-card { width: calc((100% - 36px) / 4 - 1px); }
 }

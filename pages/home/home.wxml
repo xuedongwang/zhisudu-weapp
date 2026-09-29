@@ -1,5 +1,5 @@
 <!-- pages/home/home.wxml -->
-<view class="page">
+<view class="page page-body page-body-wide">
   <!-- 顶部品牌区（标题 + 副标题一行） -->
   <view class="home-head">
     <view class="name">纸<text class="em">速</text>打</view>

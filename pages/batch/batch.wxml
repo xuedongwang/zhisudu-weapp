@@ -1,5 +1,5 @@
 <!-- pages/batch/batch.wxml -->
-<view class="page">
+<view class="page page-body">
 
   <!-- ==================== 勾选态 ==================== -->
   <block wx:if="{{mode === 'pick'}}">
