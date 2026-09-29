@@ -13,6 +13,7 @@
     <view class="card ver-card" wx:for="{{versions}}" wx:key="version">
       <view class="vhead">
         <view class="vtag">{{item.version}}</view>
+        <text class="vnew" wx:if="{{item.isNew}}">NEW</text>
         <view class="vtitle">{{item.title}}</view>
         <view class="vdate">{{item.date}}</view>
       </view>

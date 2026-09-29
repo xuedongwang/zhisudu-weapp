@@ -39,6 +39,17 @@
 }
 .vtitle { font-size: 28rpx; font-weight: 600; flex: 1; }
 .vdate { font-size: 22rpx; color: var(--sub); }
+/* 用户还没看过的版本条目（由 about.js 的 markNew 标记）。
+   与 .vtag 同色系但更轻——版本号是标识、NEW 是状态，不该互相争夺注意力 */
+.vnew {
+  font-size: 18rpx;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-weak);
+  border-radius: 8rpx;
+  padding: 2rpx 10rpx;
+  flex: none;
+}
 .vitems { margin-top: 18rpx; }
 .vitem {
   font-size: 24rpx;
@@ -75,6 +86,7 @@
   .vtag { font-size: 11px; border-radius: 5px; padding: 2px 7px; }
   .vtitle { font-size: 14px; }
   .vdate { font-size: 11px; }
+  .vnew { font-size: 9px; border-radius: 4px; padding: 1px 5px; }
   .vitems { margin-top: 9px; }
   .vitem { font-size: 12px; }
   .vitem .dot { margin-right: 5px; }
