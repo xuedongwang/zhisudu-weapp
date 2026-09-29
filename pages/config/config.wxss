@@ -38,13 +38,12 @@
   padding: 28rpx 32rpx 20rpx;
 }
 .paper-stage {
-  /* 预览台底色 = 中性米灰：纸张本身是纯白（.preview-canvas 的 #fff），
-     原 #FDFCFA 与纸几乎同色，看不出纸的边界（用户 2026-09-29 反馈）。
-     注意只影响预览台——缩略图容器（home/favs/history 等）的 #FDFCFA 不动 */
-  background: #E5E2DA;
-  border-radius: 20rpx;
-  box-shadow: 0 8rpx 32rpx rgba(40, 40, 30, 0.12);
-  padding: 20rpx;
+  /* 无台面样式（用户 2026-09-29 定稿）：白色纸张直接浮在页面底色（--bg #F6F5F1）上，
+     不用深色台面。此前试过中性米灰台面 + 台面外阴影，观感偏重，改回「去掉背景」。
+     ⚠️ padding 必须保留 20rpx：canvas 宽度按 windowWidth-52 计算（= 页面左右留白 32rpx×2
+     + 这里 20rpx×2），去掉会让纸张两侧凭空多出留白、纸张变小 */
+  background: transparent;
+  padding: 0 20rpx 20rpx; /* 左右 20rpx 是 canvas 宽度计算的一部分，不可去；上下不需留白 */
   position: relative;
 }
 /* 尺寸标签：独立行右对齐，不叠在 canvas 上（iOS 真机 canvas 原生层会盖住重叠区域） */
@@ -65,8 +64,10 @@
   display: block;
   border-radius: 8rpx;
   background: #fff;
-  /* 纸张投影：在深色台面上进一步勾勒纸的边界（原型用 1px 描边表达同一层意思） */
-  box-shadow: 0 2rpx 10rpx rgba(40, 40, 30, 0.18);
+  /* 纸张分层：柔和投影 + 1rpx 极细描边环（用 spread 阴影实现，不占布局、
+     不影响原生 canvas 尺寸），与页面底色 #F6F5F1 形成清晰但不厚重的边界
+     —— 相当于把原型里 paper-stage 的 1px 描边移到纸张自身 */
+  box-shadow: 0 4rpx 16rpx rgba(40, 40, 30, 0.12), 0 0 0 1rpx rgba(40, 40, 30, 0.07);
 }
 
 /* 参数区：底部 padding 预留吸底栏高度（96 按钮 + 40 上下内边距）+ 安全区，保证最后一行能滚出遮挡 */
