@@ -19,10 +19,16 @@
              value="{{profile.nickname}}" bindblur="onNickname" bindconfirm="onNickname" />
       <view class="profile-sub">
         <text class="sub-text">模板 {{templates.length}}/{{tplLimit}} · 收藏 {{favCount}} 个</text>
-        <!-- 同步状态：以「是否真的读到云端记录」为准，不再用 cloudReady（只代表云能力已初始化） -->
-        <text wx:if="{{cloudSynced}}" class="cloud-tag">已同步云端</text>
+        <!-- 同步状态：以「是否真的读到云端记录」为准，不再用 cloudReady（只代表云能力已初始化）。
+             三态：有字段降级到底仍超限 → 说「部分数据未同步」；否则全部成功 → 「已同步云端」；
+             否则云能力可用但没同步上 → 「仅本机保存」 -->
+        <text wx:if="{{syncOversize}}" class="cloud-tag tag-warn">部分数据未同步</text>
+        <text wx:elif="{{cloudSynced}}" class="cloud-tag">已同步云端</text>
         <text wx:elif="{{cloudReady}}" class="cloud-tag tag-local">仅本机保存</text>
       </view>
+      <!-- 同步降级说明（v1.1.0）：容量守卫淘汰了最旧的流水记录 / 降级后仍超限时显示。
+           `syncNote` 为空时不渲染 → 手机端资料卡高度与改造前完全一致（见 mine.js 的 _syncNote） -->
+      <view class="sync-note" wx:if="{{syncNote}}">{{syncNote}}</view>
     </view>
   </view>
 
@@ -74,6 +80,8 @@
       <image class="micon" src="{{icons.info}}" mode="aspectFit" />
       <text class="mtext">关于纸速打</text>
       <text class="mval">{{appVersion}}</text>
+      <!-- 有新版本更新历史未读时显示；点进「关于」页看过即消失（见 mine.js 的 _hasNewVersion） -->
+      <text class="mnew" wx:if="{{hasNewVersion}}">NEW</text>
       <image class="marr" src="{{icons.chevron}}" mode="aspectFit" />
     </view>
     <!-- 清除我的资料（v1.1.3）：v1.1.2 起头像昵称上云，必须给用户删除途径。

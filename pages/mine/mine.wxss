@@ -108,6 +108,22 @@
   background: #F1EFE7;
 }
 
+/* 有字段降级到底仍超限（v1.1.0）：琥珀色。既不是成功（主色）也不是彻底没同步（灰），
+   如实落在中间态——文案「部分数据未同步」，见 mine.js 的 _syncNote */
+.cloud-tag.tag-warn {
+  color: #8A6A17;
+  background: #FAF3E2;
+}
+
+/* 同步降级说明行（v1.1.0）：同 tag-warn 的琥珀语气，陈述事实而非报错。
+   只在真有情况时渲染（mine.wxml 的 wx:if），平时不占高度、手机端资料卡高度零变化 */
+.sync-note {
+  margin-top: 8rpx;
+  font-size: 21rpx;
+  line-height: 1.5;
+  color: #8A6A17;
+}
+
 /* ===== 模板列表（重排版：view 替代 button，避免默认按钮样式干扰） ===== */
 .tpl-card { padding: 8rpx 28rpx; }
 .tpl-item {
@@ -196,6 +212,18 @@
   flex: none;
 }
 .mval { font-size: 23rpx; color: var(--sub); flex: none; }
+/* 「关于」入口的 NEW 徽标：有未读版本更新时显示（判据见 mine.js 的 _ensureVersionBaseline）。
+   用主色实心块而非浅色——它出现在列表行里、周围没有别的色块争夺注意力，
+   要的是「一眼扫到」，与「关于」页内的 .vnew（浅底、与版本号并列）刻意区分。 */
+.mnew {
+  font-size: 18rpx;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 8rpx;
+  padding: 2rpx 10rpx;
+  flex: none;
+}
 .marr { width: 28rpx; height: 28rpx; flex: none; }
 .item-hover { background: #FAFAF7; }
 
@@ -223,6 +251,7 @@
   .profile-sub { margin-top: 4px; gap: 6px; }
   .sub-text { font-size: 11.5px; }
   .cloud-tag { font-size: 9px; border-radius: 7px; padding: 1px 6px; }
+  .sync-note { margin-top: 4px; font-size: 10.5px; }
 
   .tpl-card { padding: 4px 14px; }
   .tpl-item { gap: 10px; padding: 12px 0; }
@@ -242,5 +271,6 @@
   .menu-item { gap: 10px; padding: 14px 0; font-size: 14.5px; }
   .micon { width: 20px; height: 20px; }
   .mval { font-size: 11.5px; }
+  .mnew { font-size: 9px; border-radius: 4px; padding: 1px 5px; }
   .marr { width: 14px; height: 14px; }
 }

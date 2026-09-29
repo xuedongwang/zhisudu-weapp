@@ -29,7 +29,10 @@ Page({
     tplLimit: store.TEMPLATE_LIMIT,
     cloudReady: false,   // 云能力是否初始化（环境层面）
     cloudSynced: false,  // 资料是否真的读到了云端记录（事实层面，UI 标签以此为准）
+    syncOversize: false, // 有字段降级到底仍超限、没能上传（标签改说「部分数据未同步」）
+    syncNote: '',        // 同步降级说明行；空串 = 那行 DOM 不出现
     appVersion: CURRENT_VERSION,
+    hasNewVersion: false, // 「关于」入口的 NEW 徽标：有未读的版本更新时显示
   },
 
   onShow() {
@@ -40,10 +43,13 @@ Page({
     cloudUtil.loadProfile((profile, meta) => {
       const p = { avatar: profile.avatar || '', nickname: profile.nickname || '' }
       this._profileSynced = !!(meta && meta.synced)
+      const st = sync.syncState()
       this.setData({
         profile: p,
         profileLocked: this._isLocked(p),
-        cloudSynced: this._syncLabel(),
+        cloudSynced: this._syncLabel(st),
+        syncOversize: !!st.oversize,
+        syncNote: this._syncNote(st),
       })
     })
     // 模板 / 收藏 / 累计张数的跨设备同步要立刻可见
@@ -70,22 +76,84 @@ Page({
    * 只看资料会漏掉「模板/历史其实没上去」这一种——那正是 v1.1.2 修掉的「假绿」思路，
    * 数据上云后又多了一个可能失真的来源，索性一起纳入判据。
    * 用户从未设置过头像昵称时，不把「资料未同步」算作失败（没有资料可同步）。
+   *
+   * @param {object} [st] 预取的 sync.syncState()，页面里多处同时要用，省一次读存储
    */
-  _syncLabel() {
+  _syncLabel(st) {
     if (!getApp().globalData.cloudReady) return false
-    const dataOk = !!sync.syncState().ok
+    const s = st || sync.syncState()
+    const dataOk = !!s.ok
     const hasProfile = !!(this.data.profile.avatar || this.data.profile.nickname)
     const profileOk = hasProfile ? !!this._profileSynced : true
     return !!(dataOk && profileOk)
   },
 
+  /**
+   * 同步状态说明行（v1.1.0 新增）：只在**有需要用户知道、但不足以称为故障**的情况时返回文字，
+   * 平时返回空串、那行 DOM 不出现（手机端资料卡高度零变化）。
+   *
+   * 为什么必须说：容量守卫触发后 utils/sync.js 会**降级淘汰最旧的流水记录**（shrinkToFit）。
+   * 不做提示的话，用户只是从「静默失败」变成「静默降级」——历史悄悄变短，没人知道为什么。
+   * 这是修 P0 时一并补上的：**降级可以，瞒着用户不行。**
+   *
+   * 两种情形：
+   *   oversize —— 降级到底仍超限，该字段没能上传（持续状态，一直提示到某次同步成功为止）
+   *   degraded —— 上次同步为控体积释放了最早的 N 条历史（一次性事件，按 DEGRADE_NOTE_DAYS 保留提示）
+   *
+   * @param {object} [st] 预取的 sync.syncState()
+   */
+  _syncNote(st) {
+    if (!getApp().globalData.cloudReady) return ''
+    const s = st || sync.syncState()
+    if (s.oversize) return '打印历史体积超过单次同步上限，暂未能上传云端'
+    const d = s.degraded
+    if (d && d.records > 0 && Date.now() - (d.at || 0) < sync.DEGRADE_NOTE_DAYS * 24 * 3600 * 1000) {
+      // 「已释放」而不是「未上传」——淘汰是**本机与云端同时**发生的，说成「没传上去」是假话
+      return `打印历史较多，为保证云端同步已释放最早的 ${d.records} 条；累计张数不受影响`
+    }
+    return ''
+  },
+
   // 模板列表 + 收藏数 + 累计张数：同步完成后重读同一批本机数据
+  /**
+   * 版本基线与 NEW 徽标（2026-09-29 新增）。
+   *
+   * 判据：本地「已读版本」≠ 当前代码版本 = 有未读的版本更新。
+   * utils/version.js 的 CURRENT_VERSION 是**代码常量**，用户冷启动拿到新代码时它才会变，
+   * 所以**不需要**额外检测小程序更新——微信的更新在下次冷启动生效，常量天然跟着变，
+   * 两端时机是一致的。
+   *
+   * ⚠️ 边界：已读版本为空时**不提示**，并当场写入基线。为空有两种可能：
+   *   ① 刚安装（装的就是最新版，弹「有更新」是错的）；
+   *   ② 本功能引入前就在用的老用户（那时没有这个记录）。
+   *   storage 里没有可靠信号能区分二者（清缓存也会清掉其他数据，同样不可靠），
+   *   故取「不打扰」这一侧：宁可漏提示一次，也不让每个新用户都被更新提示骚扰。
+   *   **代价**：本功能随 v1.1.0 一起发布，而 v1.1.0 之前的用户都没有这个标记，
+   *   所以 **v1.1.0 这次不会有人看到 NEW，从下一次发版起才生效**。
+   *   若确实要让 v1.1.0 就提示，把 _ensureVersionBaseline 的两行去掉、
+   *   并把下面的判断改成 `return !!seen && seen !== CURRENT_VERSION` 的反面
+   *   （即 `return seen !== CURRENT_VERSION`）——代价是新装用户也会看到徽标。
+   *
+   * 写入基线放在这里（而不是只在 about 页写）：否则「从不打开关于页」的用户永远
+   * 没有基线，之后每次发版都不会提示他。放入口页是覆盖面最大的位置。
+   */
+  _ensureVersionBaseline() {
+    if (!store.getVersionSeen()) store.setVersionSeen(CURRENT_VERSION)
+  },
+
   _refreshData() {
+    this._ensureVersionBaseline()
+    // 一次读存储，标签 / 超限标记 / 说明行三处共用（syncState 每次都读一轮 meta）
+    const st = sync.syncState()
     this.setData({
       cloudReady: getApp().globalData.cloudReady,
       favCount: store.getFavs().length,
       hisTotal: store.getHistoryStats().total,
-      cloudSynced: this._syncLabel(),
+      cloudSynced: this._syncLabel(st),
+      syncOversize: !!st.oversize,
+      syncNote: this._syncNote(st),
+      // 基线建立后统一用这一个判断；从「关于」页返回时 onShow 会重算 → 徽标消失
+      hasNewVersion: store.getVersionSeen() !== CURRENT_VERSION,
     })
     this._refreshTemplates()
   },
