@@ -101,8 +101,8 @@
   white-space: nowrap;
   /* v1.4 修复（用户反馈①）：scroll-view 内部是 overflow 裁切，此前 chip 上下贴边，
      选中项底部的 3rpx 主色描边正好压在容器下缘被裁掉（远看像「下方少一截」）。
-     上下各留 8rpx 内边距把内容撑离边缘，描边完整可见。 */
-  padding: 8rpx 0;
+     上下各留 10rpx 内边距把内容撑离边缘，描边完整可见。 */
+  padding: 10rpx 0;
 }
 .paper-row .chip {
   display: inline-block;
