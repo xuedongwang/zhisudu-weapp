@@ -114,3 +114,116 @@ page {
   font-size: 24rpx;
   padding: 32rpx 0;
 }
+
+/* ==================== 响应式基线（v2.0）====================
+   ⚠️ 铁律：响应式只动「展示层」，绝不碰绘制与导出层。
+   红线文件：utils/papers.js（pageSizeMm / pixelSize / dpiForSize）、
+   utils/exporter.js、utils/draw.js、utils/thumbs.js。
+   导出尺寸 = mm × DPI ÷ 25.4，与屏幕宽度无关；任何响应式改动都不得进入这些文件。
+
+   三档口径：
+     S  < 600px   手机      尺寸用 rpx（现状，一行不改）
+     M  600~899   平板竖屏  尺寸用 px，内容限宽 640px
+     L  >= 900    平板横屏  尺寸用 px，内容限宽 880px
+
+   换算律：**大屏 px 值 = 小屏 rpx 值 ÷ 2**。
+   依据：rpx 的定义是 750rpx = 显示区域宽度，在 375pt 屏上 1rpx 恰好 = 0.5px，
+   即 28rpx = 14px；而同样 28rpx 在 768pt 的 iPad 上 = 28.7px（近 2 倍）。
+   所以「rpx ÷ 2」的语义 = 把 iPhone 375pt 的设计基准原样搬到 iPad，此后不再放大。
+   这条律让大屏适配可以机械化执行，并可由 responsive-audit.js 校验。
+
+   ⚠️ 媒体查询必须放在文件末尾：与上方基础样式**同权重**，CSS 同权重靠后者覆盖，
+      写在前面的会被后面的基础样式盖掉（踩过）。
+   ⚠️ 断点必须写 px：rpx 依赖屏宽，写在 @media 里没有意义。
+   ⚠️ 以下分支在手机竖屏（320~430pt）上永不命中 → **手机端视觉零变化**。 */
+
+/* 内容列：手机铺满；大屏限宽居中。
+   新页面根容器一律加这个类（<view class="page page-body">），
+   不必新增 DOM 层级——限宽后整列居中，内部滚动区会自动跟着变窄。
+   前提：该页 .page 自身不要设 background，否则限宽后左右会露出 page 底色；
+   当前 8 个页面的 .page 都未设 background（均透出 --bg），视觉无缝。 */
+.page-body {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 通用等分网格（新页面用）。
+   ⚠️ 名字不能叫 .grid —— pages/batch/batch.wxss 已把 .grid 用作九宫格容器。
+   宽度公式内建冗余（小屏 2rpx / 大屏 1px），禁止页面自写百分比宽度：
+   若「N 项 + (N−1) 个间距」刚好凑满 100%，WebKit 的 1/64px 取整（LayoutUnit）
+   会让它溢出 1/64px，而 flex 换行判定是「放不下就换行」 → 最后一项掉下一行
+   （首页与批量页都中过这个坑，详见 pages/home/home.wxss 的注释）。 */
+.rsp-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+}
+.rsp-grid > .rsp-item {
+  width: calc((100% - 24rpx) / 2 - 2rpx);
+}
+
+@media (min-width: 600px) {
+  .page-body {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .rsp-grid { gap: 12px; }
+  .rsp-grid > .rsp-item { width: calc((100% - 24px) / 3 - 1px); }
+
+  /* 以下为全局基类的 px 化：一处改、全站受益。
+     逐条数值 = 上方同名属性的 rpx 值 ÷ 2（见文件顶部换算律）。 */
+  page { font-size: 14px; }
+
+  .card {
+    padding: 14px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(40, 40, 30, 0.08);
+  }
+
+  .sec-title {
+    font-size: 15px;
+    margin: 16px 2px 10px;
+  }
+  .sec-title .more { font-size: 12px; }
+
+  .chip {
+    padding: 6px 15px;
+    border-radius: 16px;
+    font-size: 13px;
+    border-width: 2px;
+  }
+
+  .btn {
+    height: 48px;
+    padding: 0 12px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  .btn-primary { box-shadow: 0 4px 12px rgba(14, 138, 109, 0.3); }
+  .btn-ghost { border-width: 2px; }
+
+  .ad-placeholder {
+    height: 60px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-top: 16px;
+    /* 斜纹周期同样要 px 化，否则大屏上条纹会粗一倍 */
+    background: repeating-linear-gradient(45deg, #F1EFE9, #F1EFE9 8px, #ECE9E1 8px, #ECE9E1 16px);
+  }
+
+  .empty {
+    font-size: 12px;
+    padding: 16px 0;
+  }
+}
+
+@media (min-width: 900px) {
+  /* 多列卡片网格专用（与 .page-body 同时挂）：放宽到 880px，让 4 列每列仍有 ~203px。
+     单列内容页（列表 / 表单 / 九宫格 / 结果页）**不要**挂这个类——一行文字横跨
+     800px 无法阅读，反而比 640px 更差。两个类在 @media 里靠「后出现者覆盖」生效，
+     故 900px 块必须排在 600px 块之后。 */
+  .page-body-wide { max-width: 880px; }
+  .rsp-grid > .rsp-item { width: calc((100% - 36px) / 4 - 1px); }
+}
