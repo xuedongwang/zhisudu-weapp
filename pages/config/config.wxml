@@ -1,6 +1,10 @@
 <!-- pages/config/config.wxml -->
 <!-- 使用原生页面滚动（不用 scroll-view），吸底栏 fixed，保证任何机型都能正常滚动 -->
 
+<!-- 内容列（v2.0 响应式）：包住流内三段（分享条 / 预览区 / 参数区），
+     由全局 .page-body 在大屏限宽居中。吸底栏是 fixed，不在此列（见 config.wxss）。 -->
+<view class="page-body">
+
 <!-- 分享落地承接（FR-15.8）：好友点开分享卡片直达本页时，说明「这张纸是别人配好的」，
      否则用户会以为是自己上次的设置或系统默认，分享的打动点就丢了 -->
 <view class="share-tip" wx:if="{{fromShare && !tipClosed}}">
@@ -235,6 +239,9 @@
   <view class="export-note">导出规格：{{exportNote}}</view>
   <!-- 底部留白由 .params-wrap 的 padding-bottom 提供（含吸底栏高度与安全区） -->
 </view>
+
+</view>
+<!-- /内容列（.page-body） -->
 
 <!-- 吸底操作栏 -->
 <view class="bottom-bar">

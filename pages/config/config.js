@@ -156,6 +156,13 @@ Page({
     this._initPreview()
   },
 
+  // 显示区域尺寸变化（iPad 旋转 / 桌面端拉伸窗口）后重算预览尺寸。
+  // 基础库 2.4.0+ 支持；app.json 已开 "resizable": true（v2.0）。
+  // ⚠️ 重算的只是「预览的显示尺寸」——导出产物仍由 papers.pixelSize() 决定，不受影响。
+  onResize() {
+    if (this._canvas) this._initPreview()
+  },
+
   // ---------- 视图同步（参数 → 视图字段） ----------
   _syncView() {
     const p = this._params
@@ -259,37 +266,48 @@ Page({
   },
 
   // ---------- 预览画布 ----------
+  // ⚠️ 响应式红线说明：本方法算出的 cssW / cssH 只决定「屏幕上预览画布的显示分辨率」
+  //    （canvas.width = cssW × dpr），**纸张的真实尺寸与导出产物完全不受影响**——
+  //    导出走 utils/exporter.js → papers.pixelSize()，尺寸 = mm × DPI ÷ 25.4，与屏宽无关。
   _initPreview() {
     const win = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    // 可用宽度 = 页面宽 - 左右留白 32rpx×2（.preview-area 的 padding）。
-    // v1.3.1：纸张舞台已去掉内边距（同时去掉台面背景），故不再扣原先的 20rpx×2——
-    // 纸张宽度与下方参数卡片（同受 32rpx×2 留白约束）对齐。
-    // 同时改用 rpx→px 精确换算：原硬编码 -52px 只在 375pt 屏精确，更宽的屏上系数不是 0.5，
-    // 会让纸张比可用宽度大出几个 px（两侧轻微溢出、与其它块错位）。
-    const rpx2px = win.windowWidth / 750
-    const cssW = win.windowWidth - Math.round(64 * rpx2px)
     // 纸张比例跟着规格与方向走（原来写死 A4）
     const mm = papers.pageSizeMm(this._params.size, this._params.orient, { w: this._params.customW, h: this._params.customH })
-    const cssH = cssW * (mm.h / mm.w)
     const dpr = Math.min(win.pixelRatio || 2, 3)
-    this.setData({ pw: cssW, ph: cssH }, () => {
-      wx.createSelectorQuery()
-        .in(this)
-        .select('#preview')
-        .fields({ node: true, size: true })
-        .exec((res) => {
-          if (!res || !res[0] || !res[0].node) return
-          const canvas = res[0].node
-          canvas.width = Math.round(cssW * dpr)
-          canvas.height = Math.round(cssH * dpr)
-          this._canvas = canvas
-          this._ctx = canvas.getContext('2d')
-          this._dpr = dpr
-          this._cssW = cssW
-          this._cssH = cssH
-          this._drawPreview()
+    // v2.0 响应式：宽度不再按 windowWidth 反算，改为**实测 .paper-stage 的宽度**。
+    // 原因：≥600px 的大屏分支下 .page-body 会把内容列限宽到 640px，「windowWidth − 64rpx」
+    //   已不再等于实际可用宽——继续反算会让纸张比容器宽出几十 px，两侧溢出、与参数卡片错位
+    //   （与 v1.3.1 那次「硬编码 −52px 只在 375pt 精确」是同一类病根：JS 反算 ≠ CSS 实际宽度）。
+    // 改成实测后由 CSS 决定宽度：以后无论怎么调限宽或内边距，这里都自动跟上。
+    // .paper-stage 的 padding 为 0，其自身宽度就是纸张应有的宽度。
+    wx.createSelectorQuery()
+      .in(this)
+      .select('.paper-stage')
+      .boundingClientRect((rect) => {
+        // 兜底：首帧元素尚未完成布局时 rect 可能为空或宽度为 0，退回原公式
+        const rpx2px = win.windowWidth / 750
+        const cssW = (rect && rect.width) || (win.windowWidth - Math.round(64 * rpx2px))
+        const cssH = cssW * (mm.h / mm.w)
+        this.setData({ pw: cssW, ph: cssH }, () => {
+          wx.createSelectorQuery()
+            .in(this)
+            .select('#preview')
+            .fields({ node: true, size: true })
+            .exec((res) => {
+              if (!res || !res[0] || !res[0].node) return
+              const canvas = res[0].node
+              canvas.width = Math.round(cssW * dpr)
+              canvas.height = Math.round(cssH * dpr)
+              this._canvas = canvas
+              this._ctx = canvas.getContext('2d')
+              this._dpr = dpr
+              this._cssW = cssW
+              this._cssH = cssH
+              this._drawPreview()
+            })
         })
-    })
+      })
+      .exec()
   },
 
   // 实时预览：参数变更后重绘（PRD FR-03.1）
