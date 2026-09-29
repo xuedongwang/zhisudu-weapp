@@ -27,11 +27,21 @@
 //      「确认无记录」严格区分：前者绝不能走 add，否则会造出第二条文档，用户在同一
 //      账号下看到两份数据，且两份都「看起来正常」。这与 cloud.js 里 fetchCloudDoc
 //      返回 { ok, doc } 是同一个教训。
-//   ② **容量守卫**：客户端单次 add/update 写入上限 512KB（超出直接失败）。本模块按
-//      字段级 update 提交，单字段实测远低于此值（见下方估算），仍保留守卫并在超限时
-//      跳过该次推送、保留 pending，而不是把异常抛给调用方。
-//      实测估算：模板 20 + 历史 50 + 最近 10 条，每条 params 约 200~400 字节 JSON，
-//      全量合计约 30~40KB，距上限有 10 倍余量。
+//   ② **容量守卫 + 超限降级**：客户端单次 add/update 写入上限 512KB（超出直接失败）。
+//      本模块按「字段级」update 提交，但一直有个被忽视的推论——**字段级提交约束的是
+//      「单个字段值」的大小，不是「一条记录差量」的大小**。history 满 50 条时单字段
+//      实测约 475KB，已越过守卫。故超限时**降级淘汰最旧的流水记录**后再推（见 shrinkToFit），
+//      而不是跳过本次推送——「跳过」会让 pending 永远留着，该字段**永久静默不同步**。
+//
+//      ⚠️ 下面这段旧估算写于 v1.5 批量导出**之前**，已失效约 15 倍，保留仅为提醒
+//      「静态注释不会随代码失效报错，只有真跑一遍才看得见」（2026-09-29 发现并更正）：
+//        ~~模板 20 + 历史 50 + 最近 10 条，每条 params 约 200~400 字节 JSON，合计约 30~40KB~~
+//      实测（2026-09-29，口径见文档目录《存储体积审计脚本.js》，可复跑）：
+//        单张 0.7KB ／ 批量 9 张 4.8KB（默认）、9.5KB（2x2 书法格）
+//        整文档：现实 48.1KB ／ 偏重 178KB ／ 全批量默认 299.8KB ／ 全批量最大 594KB
+//        **history 单字段满 50 条批量最大 = 474.6KB（守卫的 119%）**
+//      膨胀根源：批量记录 `{ batch:true, items:[...] }` 存**完整 params 数组、最多 9 份**，
+//      体积是普通记录的 6.8~7.4 倍。
 //   ③ **清空要推空值**：clearHistory 用的是 removeStorageSync，读取会得到空字符串。
 //      若直接把它推上云，云端会变成 undefined，下次拉取时「删了又回来」。
 //      故 schema.js 为每个字段定义了 empty（数组→[]、数字→0）。
@@ -46,6 +56,17 @@ const COLLECTION = 'userdata'
 
 // 客户端单次写入硬上限 512KB，留出余量
 const MAX_PUSH_BYTES = 400 * 1024
+
+// 超限时可参与「降级淘汰」的字段 —— **只有流水类**。
+// history / recent 的上限（50 / 10）本来就是「只留最近 N 条」，丢最旧的记录与它们
+// **本来就会发生的自动截断**是同一件事，不丢任何用户主动创建的内容；
+// historyTotal 是独立计数（schema 里为此单列），因此淘汰流水**不影响「累计张数」**。
+// ⚠️ templates / favs 是用户主动创建的，丢一条就是真丢一条，**永远不参与淘汰**。
+// 数组顺序 = 淘汰优先级：history 条目多、单条大，是超限的主要来源，先动它。
+const SHRINKABLE = ['history', 'recent']
+
+// 降级说明的在「我的」页保留时长（见 pages/mine 的 _syncNote）
+const DEGRADE_NOTE_DAYS = 7
 
 // 热启动重试节流：距上次同步成功不足 5 分钟就不再跑一轮（冷启动必然首次执行）
 const RETRY_INTERVAL_MS = 5 * 60 * 1000
@@ -204,7 +225,15 @@ function db() {
   return wx.cloud.database()
 }
 
-/** 粗估一次写入的字节量。JSON 里的中文按 UTF-8 是 3 字节，乘 2 是折中偏保守的估算 */
+/**
+ * 粗估一次写入的字节量。JSON 里的中文按 UTF-8 是 3 字节，乘 2 是折中偏保守的估算。
+ *
+ * ⚠️ 对**本项目的数据形态**（数字 + 短英文 key 为主、中文极少）这里会**高估约 2 倍**：
+ *    实测 48.1KB 估 vs 24.2KB 真。也就是说守卫实际在约 200KB 真实字节处触发。
+ *    **这是故意保守，不要去改成真实字节**——它同时还要覆盖中文纸型名、模板名、
+ *    以及不同引擎 JSON.stringify 的实现差异，留一倍余量是必要的。
+ *    三处口径必须同步改：本函数 ↔ MAX_PUSH_BYTES ↔ schema.js 的 LIMITS。
+ */
 function estimateBytes(obj) {
   try {
     return JSON.stringify(obj).length * 2
@@ -242,6 +271,84 @@ function isMissingDocError(e) {
 }
 
 /**
+ * 取本次要推送的字段值。
+ * 与 commit 里 `update({ data })` / `add({ data })` 用的是**同一个对象**——降级淘汰会
+ * 就地改它（shrinkToFit），所以必须在建 data 之后、commit 之前完成淘汰，两者不能各建一份。
+ */
+function buildData(fields) {
+  const data = {}
+  fields.forEach((f) => {
+    data[f] = localValue(f)
+  })
+  return data
+}
+
+/**
+ * 超限降级：从**流水类**字段（SHRINKABLE）的末尾 —— 也就是最旧的记录 —— 开始丢弃，
+ * 直到落回守卫之内。返回 { data, bytes, dropped }，`dropped` 形如 { history: 8 }。
+ *
+ * 为什么要做（这是 2026-09-29 修的 P0 缺陷）：
+ *   原先超限直接 `return { ok:false, reason:'too_large' }`，**但不 clearPending**。
+ *   pending 一直留着 → 情形三每次把该字段放进 needPush → 每次重新撞墙 → 该字段
+ *   **永久静默不同步**（生产版只有一行 console.warn）。因为判定对象是「本次推送的字段集合」，
+ *   用户在「我的」页看到的同步标签还可能是正常的，表现为
+ *   「收藏/模板能同步、历史永远同步不了」这种最难查的局部诡异故障。
+ *   原注释写的「用户删掉一些模板/历史后下次会自然补上」也不成立——history 是自动截断的，
+ *   用户根本没有清理入口。
+ *
+ * 为什么「丢最旧的」是可接受的：见文件头部 ② 与 SHRINKABLE 的说明。
+ *
+ * ⚠️ **本函数不写本机存储**。淘汰结果由调用方在**推送成功之后**才落盘（applyDropped）——
+ *    否则一次网络失败就等于白白丢掉了用户的历史记录。
+ */
+function shrinkToFit(data, fields) {
+  let bytes = estimateBytes(data)
+  if (bytes <= MAX_PUSH_BYTES) return { data, bytes, dropped: {} }
+
+  const dropped = {}
+  SHRINKABLE.forEach((f) => {
+    if (fields.indexOf(f) < 0) return
+    let list = data[f]
+    if (!Array.isArray(list) || !list.length) return
+
+    // 单条之间体积差得很大（批量记录是普通记录的 6.8~7.4 倍），按均值一次算准会丢多或丢少，
+    // 故「按均值估一个起点 + 外层循环重估收敛」——正常两次就够，最坏也只 50 次 stringify。
+    // 数组是时间降序（store.js 入列用 unshift），故 slice(0, len - n) 留下的正是最近的那些。
+    while (bytes > MAX_PUSH_BYTES && list.length) {
+      const avg = estimateBytes(list) / list.length
+      const need = Math.max(1, Math.ceil((bytes - MAX_PUSH_BYTES) / Math.max(avg, 1)))
+      const n = Math.min(need, list.length)
+      list = list.slice(0, list.length - n)
+      data[f] = list
+      dropped[f] = (dropped[f] || 0) + n
+      bytes = estimateBytes(data)
+    }
+  })
+
+  return { data, bytes, dropped }
+}
+
+/**
+ * 把降级结果落盘 + 记账，供「我的」页如实告知用户。
+ * **只在推送成功后调用**（见 shrinkToFit 的 ⚠️）。
+ * 本次没降级时顺手清掉上一次的记录，避免提示一直挂着。
+ */
+function applyDropped(data, dropped) {
+  const names = Object.keys(dropped)
+  if (!names.length) {
+    const m = readMeta()
+    if (m.degraded || m.oversize) writeMeta({ degraded: null, oversize: null })
+    return
+  }
+  names.forEach((f) => writeLocal(f, data[f]))
+  const records = names.reduce((s, f) => s + dropped[f], 0)
+  writeMeta({
+    degraded: { at: Date.now(), records, fields: names },
+    oversize: null,
+  })
+}
+
+/**
  * 把若干字段推上云。字段级 update：一次提交只影响列出的字段，
  * 因此「改收藏」不会覆盖历史，「存模板」不会动最近记录——字段之间天然互不干扰，
  * 多设备各自改各自的字段时几乎不会互相踩。
@@ -253,15 +360,18 @@ async function pushFields(fields) {
   const openid = await cloud.getOpenid()
   if (!openid) return { ok: false, reason: 'no_openid' }
 
-  const data = {}
-  fields.forEach((f) => {
-    data[f] = localValue(f)
-  })
+  // 容量守卫 + 超限降级（2026-09-29 修 P0：原先这里只 return，不 clearPending）
+  const fit = shrinkToFit(buildData(fields), fields)
+  const data = fit.data
+  const dropped = fit.dropped
 
-  const bytes = estimateBytes(data)
-  if (bytes > MAX_PUSH_BYTES) {
-    // 保留 pending，用户删掉一些模板/历史后下次同步会自然补上
-    console.warn(`[sync] 待同步数据约 ${Math.round(bytes / 1024)}KB，超过单次写入上限，本次跳过`)
+  if (fit.bytes > MAX_PUSH_BYTES) {
+    // 降级到底仍超限：只可能是 templates / favs 自身过大（两处都有上限，理论上到不了）。
+    // 此时**必须保留 pending**——它保护的正是「本机有改动没推上去、不能被云端覆盖」这一情形。
+    // 记下 oversize 让「我的」页如实告知用户；因判定发生在任何网络请求之前，
+    // 重试本身几乎零成本，不会形成有代价的死循环。
+    console.warn(`[sync] 降级后仍超限（约 ${Math.round(fit.bytes / 1024)}KB），本次跳过 [${fields.join(',')}]`)
+    writeMeta({ oversize: { at: Date.now(), fields: fields.slice(), bytes: fit.bytes } })
     return { ok: false, reason: 'too_large' }
   }
 
@@ -282,7 +392,8 @@ async function pushFields(fields) {
   try {
     await commit(docId)
     fields.forEach(clearPending)
-    return { ok: true }
+    applyDropped(data, dropped)   // 推送成功后才把淘汰结果落盘（见 shrinkToFit 的 ⚠️）
+    return { ok: true, dropped }
   } catch (e) {
     // 缓存的 docId 已失效 → 清掉重来一次，否则会永久卡在同一个 id 上
     if (docId && isMissingDocError(e)) {
@@ -290,7 +401,8 @@ async function pushFields(fields) {
       try {
         await commit(null)
         fields.forEach(clearPending)
-        return { ok: true }
+        applyDropped(data, dropped)
+        return { ok: true, dropped }
       } catch (e2) {
         console.warn('[sync] 云端写入失败（文档重建后仍失败）', fields, e2)
         return { ok: false, reason: 'write_failed' }
@@ -539,17 +651,25 @@ function bootstrap() {
   return running
 }
 
-/** 供「我的」页显示同步状态（与资料同步状态取与，见 pages/mine） */
+/**
+ * 供「我的」页显示同步状态（与资料同步状态取与，见 pages/mine）。
+ *
+ * 除了「成没成」，还要把**降级**如实报出去——否则用户只是从「静默失败」变成「静默降级」：
+ *   degraded —— 上次同步为控体积淘汰了最旧的流水记录（一次性事件，界面按 DEGRADE_NOTE_DAYS 提示）
+ *   oversize —— 降级到底仍超限，该字段没能上传（持续状态，直到某次同步成功才清除）
+ */
 function syncState() {
   const m = readMeta()
   return {
     ok: !!m.lastSyncOk,
     lastSyncAt: m.lastSyncAt || 0,
     pending: Object.keys(m.pending || {}),
+    degraded: m.degraded || null,
+    oversize: m.oversize || null,
   }
 }
 
 module.exports = {
   bootstrap, afterWrite, onSynced, syncState,
-  COLLECTION, META_KEY,
+  COLLECTION, META_KEY, DEGRADE_NOTE_DAYS,
 }
