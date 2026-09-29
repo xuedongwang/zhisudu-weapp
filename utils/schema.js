@@ -19,6 +19,10 @@ const KEYS = {
   historyTotal: 'zsda_history_total', // 累计导出张数（独立计数，不受列表截断影响）
   profile: 'zsda_profile',            // 用户资料：{ avatar, nickname, openid }
   meta: 'zsda_sync',                  // 同步元信息：{ initialized, docId, pending, lastSyncAt }
+  // v1.4 界面状态：{ appearanceOpen } —— 配置页「外观与样式」折叠区上次的手动展开状态。
+  // ⚠️ 与上面各项性质不同：这是**纯展示偏好**，既不进 SYNC_FIELDS（换机后各机自定义），
+  //    也不属于「我的资料」（清除资料不该把界面状态一起清掉）。
+  uiState: 'zsda_ui',
 }
 
 // 列表上限（PRD FR-09.1 / FR-10.1 / FR-16）。合并两岸数据时同样受此约束。

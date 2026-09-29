@@ -738,4 +738,7 @@ module.exports = {
   blockCount, findLayout, findSize, pageSizeMm, layoutBoxes, dpiForSize,
   defaultBlock, defaultParams, normalizeBlock, normalizeParams, normalizeEntry, signature, batchSignature,
   describeBlock, describePage, templateName, groupedPapers, pixelSize,
+  // v1.4：配置页「外观与样式」折叠行的摘要要拼「绿色 · 米黄底 · 双线框」，与 describePage 用的是
+  // 同一套命名规则。若在页面里另抄一份，改了 papers 的文案就会出现两处不一致 → 直接导出复用。
+  colorName, styleName, bgColorName, bgTextureName, borderName,
 }

@@ -271,8 +271,25 @@ function getHistoryStats() {
   }
 }
 
+// ---------- 界面状态（v1.4）----------
+// 目前只有一个字段：配置页「外观与样式」折叠区上次的**手动**展开状态。
+// 为什么放在 store.js：本文件是唯一的本机存储读写层，别的模块只碰 schema 里的 key 常量，
+// 不直接调 wx.getStorageSync —— 否则「key 只有一处定义」的纪律就只剩半条。
+// ⚠️ 不推云：这是设备级展示偏好（换机后按新机默认收起即可），与用户数据无关。
+function getUiState() {
+  const v = wx.getStorageSync(KEYS.uiState)
+  return v && typeof v === 'object' ? v : {}
+}
+
+function setUiState(patch) {
+  const next = { ...getUiState(), ...patch }
+  wx.setStorageSync(KEYS.uiState, next)
+  return next
+}
+
 module.exports = {
   KEYS,
+  getUiState, setUiState,
   getTemplates, saveTemplate, updateTemplate, deleteTemplate, findTemplate,
   buildTemplateName, describeTemplate, syncTemplateNames, TEMPLATE_LIMIT,
   getFavs, isFav, toggleFav,

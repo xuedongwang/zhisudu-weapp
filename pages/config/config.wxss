@@ -99,14 +99,20 @@
 .paper-row {
   width: 100%;
   white-space: nowrap;
+  /* v1.4 修复（用户反馈①）：scroll-view 内部是 overflow 裁切，此前 chip 上下贴边，
+     选中项底部的 3rpx 主色描边正好压在容器下缘被裁掉（远看像「下方少一截」）。
+     上下各留 8rpx 内边距把内容撑离边缘，描边完整可见。 */
+  padding: 8rpx 0;
 }
 .paper-row .chip {
   display: inline-block;
   margin-right: 16rpx;
 }
 
-/* 色板 */
-.swatches { display: flex; gap: 28rpx; }
+/* 色板：v1.4 改为换行排列（用户反馈②）。
+   11 色 × 56rpx + 10 个 26rpx 间距 ≈ 876rpx，远超卡片内容宽（约 622rpx），
+   原先不换行 → flex 默认收缩把圆形挤成扁椭圆；换行后 7 + 4 两行排完。 */
+.swatches { display: flex; flex-wrap: wrap; gap: 20rpx 26rpx; }
 .swatch {
   width: 56rpx;
   height: 56rpx;
@@ -114,6 +120,8 @@
   border: 5rpx solid transparent;
   box-shadow: inset 0 0 0 4rpx #fff;
   box-sizing: border-box;
+  /* 兜底：无论容器多窄都不参与收缩，宁可换行也不变形 */
+  flex: none;
 }
 .swatch.on { border-color: var(--primary); }
 
@@ -172,3 +180,84 @@
 }
 .cs-x { color: var(--sub); font-size: 26rpx; }
 .cs-unit { color: var(--sub); font-size: 22rpx; }
+
+/* ============ 外观与样式折叠区（v1.4 渐进式披露）============
+   设计依据《设置页信息架构优化方案-v1.md》方案 C：一个折叠行 + 展开后两个小标题。
+   折叠行整行可点（bindtap 在 .fold-head 上），比只点箭头的手势容错大得多。 */
+.fold-head {
+  padding: 30rpx 0 26rpx;
+}
+.fold-head-hover { opacity: 0.55; }
+.fold-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.fold-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+.fold-name { font-size: 30rpx; font-weight: 600; }
+/* 状态点：存在非默认外观时亮起——「有改动」这件事看得见，而不是被折叠藏掉（方案 v1 第 4.3 节） */
+.fold-dot {
+  flex: none;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: var(--primary);
+}
+.fold-head-r {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  max-width: 360rpx; /* 摘要最长约 10 字（3 项）≈312rpx，留出箭头位置不被挤省略号 */
+}
+.fold-sum {
+  /* min-width:0 必需：flex 项默认 min-width:auto，不给它就没法收缩，ellipsis 永不生效 */
+  min-width: 0;
+  font-size: 24rpx;
+  color: var(--sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fold-sum.on { color: var(--primary); font-weight: 700; }
+.fold-caret {
+  flex: none;
+  font-size: 22rpx;
+  color: var(--sub);
+  transition: transform 0.2s ease;
+}
+.fold-caret.on { transform: rotate(180deg); }
+/* 副标题：不换行（一行说明清），放不下时省略号——两行会把折叠行撑高、削弱「一行入口」的观感 */
+.fold-sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: var(--sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 折叠区内的小标题（线条与颜色 / 纸张背景与装饰）：不设二级折叠，避免「点了还要再点」 */
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 26rpx 0 4rpx;
+  font-size: 22rpx;
+  color: var(--sub);
+}
+/* 标题右侧延伸的细线：不占布局、把分组边界做出来 */
+.group-title::after {
+  content: '';
+  flex: 1;
+  height: 1rpx;
+  background: var(--line);
+}
+/* 首个小标题紧跟折叠行，不再叠加 26rpx 上间距（否则两段留白相加显得断层） */
+.group-title.first { padding-top: 0; }

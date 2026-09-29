@@ -103,102 +103,8 @@
               bindchange="onExtraSwitch" />
     </view>
 
-    <!-- 边距（FR-02.5）：页面级，作用于整张纸 -->
-    <view class="prow">
-      <view class="plabel"><text class="b">边距</text><text class="pval">{{margin}} mm</text></view>
-      <slider min="5" max="25" step="1" value="{{margin}}"
-              activeColor="#0E8A6D" block-size="24" bindchanging="onMarginInput" bindchange="onMarginInput" />
-    </view>
-
-    <!-- 线色（FR-02.4）：页面级，一页纸共用一种笔色 -->
-    <view class="prow">
-      <view class="plabel"><text class="b">线条颜色</text></view>
-      <view class="swatches">
-        <view class="swatch {{color === item.value ? 'on' : ''}}"
-              style="background: {{item.value}};"
-              wx:for="{{colors}}" wx:key="value"
-              data-v="{{item.value}}" bindtap="onColor" />
-      </view>
-    </view>
-
-    <!-- 线型（FR-02.4） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">线条样式</text></view>
-      <view class="chips">
-        <view class="chip {{style === item.value ? 'on' : ''}}"
-              wx:for="{{styles}}" wx:key="value"
-              data-v="{{item.value}}" bindtap="onStyle">{{item.name}}</view>
-      </view>
-    </view>
-
-    <!-- ==================== 形式层（v1.2）====================
-         全部是叠加在任意纸型上的整页属性：主题一键套用 → 各项仍可微调 -->
-
-    <!-- 主题（一键套用一组外观参数；不是存储字段，故无选中态） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">主题</text><text class="pval">套用后可微调</text></view>
-      <view class="chips">
-        <view class="chip" wx:for="{{themes}}" wx:key="key"
-              data-v="{{item.key}}" bindtap="onTheme">{{item.name}}</view>
-      </view>
-    </view>
-
-    <!-- 线条粗细（页面级倍率，×1.0 与旧版一致） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">线条粗细</text><text class="pval">×{{weight}}</text></view>
-      <slider min="{{weightMin}}" max="{{weightMax}}" step="{{weightStep}}" value="{{weight}}"
-              activeColor="#0E8A6D" block-size="24" bindchanging="onWeightInput" bindchange="onWeightInput" />
-    </view>
-
-    <!-- 背景颜色（默认纯白） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">背景颜色</text></view>
-      <view class="swatches">
-        <view class="swatch swatch-bg {{bgColor === item.value ? 'on' : ''}}"
-              style="background: {{item.value}};"
-              wx:for="{{bgColors}}" wx:key="value"
-              data-v="{{item.value}}" bindtap="onBgColor" />
-      </view>
-    </view>
-
-    <!-- 背景纹理（浅色满铺，跟随线色的低透明度） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">背景纹理</text></view>
-      <view class="chips">
-        <view class="chip {{bgTexture === item.value ? 'on' : ''}}"
-              wx:for="{{bgTextures}}" wx:key="value"
-              data-v="{{item.value}}" bindtap="onBgTexture">{{item.name}}</view>
-      </view>
-    </view>
-
-    <!-- 页面边框（画在页缘内缩 4mm 处） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">页面边框</text></view>
-      <view class="chips">
-        <view class="chip {{border === item.value ? 'on' : ''}}"
-              wx:for="{{borders}}" wx:key="value"
-              data-v="{{item.value}}" bindtap="onBorder">{{item.name}}</view>
-      </view>
-    </view>
-
-    <!-- 文字水印（留空即关闭；内容不上报埋点） -->
-    <view class="prow">
-      <view class="plabel"><text class="b">文字水印</text><text class="pval">{{wmText ? '已开启' : '留空关闭'}}</text></view>
-      <input class="wm-input" value="{{wmText}}" maxlength="12" placeholder="如：草稿 · 最多 12 字"
-             placeholder-class="wm-ph" bindinput="onWmText" />
-    </view>
-    <view class="prow" wx:if="{{wmText}}">
-      <view class="plabel"><text class="b">水印透明度</text><text class="pval">{{wmAlpha}}</text></view>
-      <slider min="{{wmAlphaMin}}" max="{{wmAlphaMax}}" step="0.01" value="{{wmAlpha}}"
-              activeColor="#0E8A6D" block-size="24" bindchanging="onWmAlphaInput" bindchange="onWmAlphaInput" />
-    </view>
-    <view class="prow" wx:if="{{wmText}}">
-      <view class="plabel"><text class="b">水印角度</text><text class="pval">{{wmAngle}}°</text></view>
-      <slider min="{{wmAngleMin}}" max="{{wmAngleMax}}" step="1" value="{{wmAngle}}"
-              activeColor="#0E8A6D" block-size="24" bindchanging="onWmAngleInput" bindchange="onWmAngleInput" />
-    </view>
-
-    <!-- 口算纸分栏（FR-02.6） -->
+    <!-- 口算纸分栏（FR-02.6）：v1.4 从卡片末尾上移——它决定「纸上画几栏」，
+         与格宽/边距同属内容参数，不该夹在装饰项中间（方案 v1 第 4.1 节） -->
     <view class="prow" wx:if="{{hasCols}}">
       <view class="plabel"><text class="b">分栏数</text><text class="pval">{{cols}} 栏</text></view>
       <view class="chips">
@@ -207,6 +113,123 @@
         <view class="chip {{cols === 3 ? 'on' : ''}}" data-v="3" bindtap="onCols">3 栏</view>
       </view>
     </view>
+
+    <!-- 边距（FR-02.5）：页面级，作用于整张纸，内容段在此收尾 -->
+    <view class="prow">
+      <view class="plabel"><text class="b">边距</text><text class="pval">{{margin}} mm</text></view>
+      <slider min="5" max="25" step="1" value="{{margin}}"
+              activeColor="#0E8A6D" block-size="24" bindchanging="onMarginInput" bindchange="onMarginInput" />
+    </view>
+
+    <!-- ==================== 外观与样式（v1.4 渐进式披露）====================
+         线条颜色 / 线条样式 / 线条粗细 / 主题 / 背景颜色 / 背景纹理 / 页面边框 / 文字水印（含透明度、
+         角度）共 10 组，全部是「长什么样」而非「能不能写」的纯装饰项（方案 v1 的 P3 层），默认收起，
+         默认视图只留「把纸生成出来」的主路径。依据：《设置页信息架构优化方案-v1.md》方案 C。
+         ⚠️ 只改呈现层级——参数默认值、导出结果、模板与云端存储结构一律不变。 -->
+    <view class="fold-head" bindtap="toggleAppearance" hover-class="fold-head-hover">
+      <view class="fold-row">
+        <view class="fold-title">
+          <view class="fold-dot" wx:if="{{hasCustomAppearance}}"></view>
+          <text class="fold-name">外观与样式</text>
+        </view>
+        <view class="fold-head-r">
+          <text class="fold-sum {{hasCustomAppearance ? 'on' : ''}}">{{appearanceSummary}}</text>
+          <text class="fold-caret {{appearanceOpen ? 'on' : ''}}">▾</text>
+        </view>
+      </view>
+      <view class="fold-sub">颜色 · 粗细 · 主题 · 背景 · 纹理 · 边框 · 水印</view>
+    </view>
+
+    <block wx:if="{{appearanceOpen}}">
+      <view class="group-title first">线条与颜色</view>
+
+      <!-- 主题（一键套用一组外观参数；不是存储字段，故无选中态） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">主题</text><text class="pval">套用后可微调</text></view>
+        <view class="chips">
+          <view class="chip" wx:for="{{themes}}" wx:key="key"
+                data-v="{{item.key}}" bindtap="onTheme">{{item.name}}</view>
+        </view>
+      </view>
+
+      <!-- 线色（FR-02.4）：页面级，一页纸共用一种笔色 -->
+      <view class="prow">
+        <view class="plabel"><text class="b">线条颜色</text></view>
+        <view class="swatches">
+          <view class="swatch {{color === item.value ? 'on' : ''}}"
+                style="background: {{item.value}};"
+                wx:for="{{colors}}" wx:key="value"
+                data-v="{{item.value}}" bindtap="onColor" />
+        </view>
+      </view>
+
+      <!-- 线型（FR-02.4） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">线条样式</text></view>
+        <view class="chips">
+          <view class="chip {{style === item.value ? 'on' : ''}}"
+                wx:for="{{styles}}" wx:key="value"
+                data-v="{{item.value}}" bindtap="onStyle">{{item.name}}</view>
+        </view>
+      </view>
+
+      <!-- 线条粗细（页面级倍率，×1.0 与旧版一致） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">线条粗细</text><text class="pval">×{{weight}}</text></view>
+        <slider min="{{weightMin}}" max="{{weightMax}}" step="{{weightStep}}" value="{{weight}}"
+                activeColor="#0E8A6D" block-size="24" bindchanging="onWeightInput" bindchange="onWeightInput" />
+      </view>
+
+      <view class="group-title">纸张背景与装饰</view>
+
+      <!-- 背景颜色（默认纯白） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">背景颜色</text></view>
+        <view class="swatches">
+          <view class="swatch swatch-bg {{bgColor === item.value ? 'on' : ''}}"
+                style="background: {{item.value}};"
+                wx:for="{{bgColors}}" wx:key="value"
+                data-v="{{item.value}}" bindtap="onBgColor" />
+        </view>
+      </view>
+
+      <!-- 背景纹理（浅色满铺，跟随线色的低透明度） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">背景纹理</text></view>
+        <view class="chips">
+          <view class="chip {{bgTexture === item.value ? 'on' : ''}}"
+                wx:for="{{bgTextures}}" wx:key="value"
+                data-v="{{item.value}}" bindtap="onBgTexture">{{item.name}}</view>
+        </view>
+      </view>
+
+      <!-- 页面边框（画在页缘内缩 4mm 处） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">页面边框</text></view>
+        <view class="chips">
+          <view class="chip {{border === item.value ? 'on' : ''}}"
+                wx:for="{{borders}}" wx:key="value"
+                data-v="{{item.value}}" bindtap="onBorder">{{item.name}}</view>
+        </view>
+      </view>
+
+      <!-- 文字水印（留空即关闭；内容不上报埋点） -->
+      <view class="prow">
+        <view class="plabel"><text class="b">文字水印</text><text class="pval">{{wmText ? '已开启' : '留空关闭'}}</text></view>
+        <input class="wm-input" value="{{wmText}}" maxlength="12" placeholder="如：草稿 · 最多 12 字"
+               placeholder-class="wm-ph" bindinput="onWmText" />
+      </view>
+      <view class="prow" wx:if="{{wmText}}">
+        <view class="plabel"><text class="b">水印透明度</text><text class="pval">{{wmAlpha}}</text></view>
+        <slider min="{{wmAlphaMin}}" max="{{wmAlphaMax}}" step="0.01" value="{{wmAlpha}}"
+                activeColor="#0E8A6D" block-size="24" bindchanging="onWmAlphaInput" bindchange="onWmAlphaInput" />
+      </view>
+      <view class="prow" wx:if="{{wmText}}">
+        <view class="plabel"><text class="b">水印角度</text><text class="pval">{{wmAngle}}°</text></view>
+        <slider min="{{wmAngleMin}}" max="{{wmAngleMax}}" step="1" value="{{wmAngle}}"
+                activeColor="#0E8A6D" block-size="24" bindchanging="onWmAngleInput" bindchange="onWmAngleInput" />
+      </view>
+    </block>
   </view>
 
   <view class="export-note">导出规格：{{exportNote}}</view>

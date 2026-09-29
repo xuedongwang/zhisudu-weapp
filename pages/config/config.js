@@ -16,6 +16,11 @@ const store = require('../../utils/store')
 const track = require('../../utils/track')
 const cache = require('../../utils/cache')
 
+// 形式层默认值基准（v1.4 外观摘要用）：模块加载时算一次即可——_syncView 会被滑杆
+// 逐帧触发（~60 次/秒），没必要每次都重建一个默认参数对象。
+// 用 papers 的默认值而不是在这里抄一份常量，保证「默认」只有一处定义。
+const APPEARANCE_DEFAULTS = papers.defaultParams('tianzige')
+
 Page({
   data: {
     // ---------- 页面级 ----------
@@ -82,6 +87,13 @@ Page({
     // 入口标识：true 表示由好友分享的卡片进入（顶部展示承接提示条，FR-15.6）
     fromShare: false,
     tipClosed: false,
+
+    // ---------- 外观折叠区（v1.4 渐进式披露）----------
+    // 10 组纯装饰项（线条颜色/样式/粗细、主题、背景色/纹理、边框、水印×3）默认收起，
+    // 默认视图只留「把纸生成出来」的主路径。依据：《设置页信息架构优化方案-v1.md》方案 C。
+    appearanceOpen: false,
+    appearanceSummary: '均为默认',
+    hasCustomAppearance: false,
   },
 
   onLoad(options) {
@@ -115,6 +127,14 @@ Page({
       fromShare: options.from === 'share',
     })
     this._syncView()
+
+    // 外观折叠区初值（方案 v1 的 D2 / D3）：
+    //   ① 从「模板」或「分享链接」进入、且带入**非默认**外观 → 自动展开一次：
+    //      用户此刻的任务是核对「朋友给的这张纸长什么样」，把外观藏起来是帮倒忙；
+    //      ⚠️ 自动展开**不写入记忆**——一次性判断不该污染用户自己的偏好；
+    //   ② 其余情况恢复上次的**手动**状态（无记录则收起）。
+    const autoOpen = (!!options.tpl || options.from === 'share') && this.data.hasCustomAppearance
+    this.setData({ appearanceOpen: autoOpen || !!store.getUiState().appearanceOpen })
 
     // 埋点：进入配置页（生成完成率的分母口径 = 进入配置页用户数）
     track.resetParamDedup()
@@ -198,12 +218,44 @@ Page({
       orientText: p.orient === 'l' ? '横向' : '纵向',
       sizeText: size.name,
       layoutText: layout.name,
+      // 外观折叠行的摘要与状态点（每次参数变更都会重算，改完外观立刻反映在折叠行上）
+      ...this._appearanceInfo(),
       exportNote: `${sizeDesc} · ${baseDpi}DPI（${px.w}×${px.h}px）· 保存相册 / 分享`,
     })
 
     wx.setNavigationBarTitle({
       title: p.layout === '1x1' ? paper.name : `${layout.name} · ${blocks.length} 区`,
     })
+  },
+
+  // ---------- 外观摘要（v1.4）----------
+  // 折叠行右侧文案 + 状态点的依据：**只在非默认时占位**，全默认时显示「均为默认」。
+  // 判定基准取自 papers.defaultParams()（形式层默认值的那一处定义），不在这里另抄一份默认值——
+  // 否则哪天 papers 调了默认色，摘要会永远显示「有改动」。
+  _appearanceInfo() {
+    const p = this._params
+    const d = APPEARANCE_DEFAULTS
+    const parts = []
+    // 顺序 = 用户视觉上最先注意到的：笔色 → 底色 → 边框 → 纹理 → 线型 → 粗细 → 水印
+    if (p.color !== d.color) parts.push(papers.colorName(p.color))
+    if (p.bgColor !== d.bgColor) parts.push(papers.bgColorName(p.bgColor))
+    if (p.border !== d.border) parts.push(papers.borderName(p.border))
+    if (p.bgTexture !== d.bgTexture) parts.push(papers.bgTextureName(p.bgTexture))
+    if (p.style !== d.style) parts.push(papers.styleName(p.style))
+    if (p.weight !== d.weight) parts.push(`×${p.weight}`)
+    if (p.wmText) parts.push('水印')
+    return {
+      hasCustomAppearance: parts.length > 0,
+      // 最多 3 项：折叠行只有一行，再长会被截断成看不出所以然的前缀
+      appearanceSummary: parts.length ? parts.slice(0, 3).join(' · ') : '均为默认',
+    }
+  },
+
+  // 折叠区手动展开/收起（只有手动触发才写入记忆，见方案 v1 第 4.4 节）
+  toggleAppearance() {
+    const open = !this.data.appearanceOpen
+    this.setData({ appearanceOpen: open })
+    store.setUiState({ appearanceOpen: open })
   },
 
   // ---------- 预览画布 ----------
