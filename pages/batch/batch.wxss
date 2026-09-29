@@ -104,7 +104,11 @@
 }
 .cell {
   position: relative;
-  width: calc((100% - 32rpx) / 3);
+  /* 3 列九宫格，固定 3 列不随屏宽变（这是「一次打一套 ≤9 张」的语义，不是瀑布流）。
+     ⚠️ 与首页网格同一个坑：((100% − 2×16rpx) / 3) 是零冗余写法，
+     「3 张 + 2 个间距」刚好 100%，亚像素取整溢出即换行（第 3 张掉下一行）。
+     末尾减 2rpx 冗余即解，详见 pages/home/home.wxss 与《响应式布局方案-v1.md》。 */
+  width: calc((100% - 32rpx) / 3 - 2rpx);
   aspect-ratio: 3 / 4;
   background: var(--card);
   border-radius: 16rpx;

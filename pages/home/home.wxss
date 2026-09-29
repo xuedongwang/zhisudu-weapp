@@ -46,14 +46,24 @@
 }
 .fav-chip .star { color: #F5A623; }
 
-/* 纸型卡片 */
+/* 纸型卡片网格 */
 .paper-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 24rpx;
 }
 .paper-card {
-  width: calc(50% - 12rpx);
+  /* 手机（默认）：2 列。
+     ⚠️ 不能写 calc(50% - 12rpx)——那是「2 张卡 + 1 个间距 = 100%」的**零冗余**写法。
+     WebKit 布局按 1/64px 取整（LayoutUnit），这种算式一旦有任何一位不能整除，
+     取整后的「两张卡 + 间距」会比容器宽出不到 0.02px；而 flex 换行判定是
+     「放不下就换行」，**溢出 1/64px 也算放不下** → 第二张直接掉到下一行。
+     实测 iPhone 15 Pro（393pt）：内容宽 359.46px、卡宽 173.44px 都不是 1/64 的整数倍，
+     必现；375pt 屏恰好整除（343px → 165.5px）所以旧版在那台机器上正常——
+     这正是「本来一排两个，换个机型就变一个」的根因（详见《响应式布局方案-v1.md》）。
+     公式：((100% − (n−1) × 间距) / n) − 冗余；冗余取 2rpx(≈1px)，
+     已远超取整误差（4 列累计 ≤0.06px），视觉上完全看不出，但换行判定就稳了。 */
+  width: calc((100% - 24rpx) / 2 - 2rpx);
   background: #fff;
   border-radius: 28rpx;
   box-shadow: 0 6rpx 24rpx rgba(40, 40, 30, 0.08);
@@ -157,4 +167,34 @@
   background: var(--primary);
   color: #fff;
   transform: scale(0.96);
+}
+
+/* ==================== 响应式：大屏多列（v1.5）====================
+   为什么放在文件末尾：媒体查询里的规则与上面的 `.paper-thumb` 等**同权重**，
+   CSS 同权重靠后者覆盖，写在前面会被后面的基础样式盖掉（这是个很容易踩的坑）。
+
+   为什么用 px 断点：rpx 的换算依赖屏宽，而媒体查询本身就是在按屏宽分支，
+   在 `@media` 里写 rpx 没有意义。断点取 600px / 900px——
+   600 覆盖平板竖屏（iPad 768pt、折叠屏展开 ~673pt），900 覆盖平板横屏（1024pt+）。
+
+   ⚠️ 只在「显示区域真的这么宽」时才命中：
+   - 手机竖屏（320~430pt）永远不命中 → **对手机端零影响**；
+   - 微信 iPad 版默认以手机尺寸的小窗运行小程序（app.json 未开 `resizable`），
+     也不会命中；要真正拿到宽显示区域需在 app.json 加 `"resizable": true`
+     （基础库 2.3.0+ 支持 iPad 旋转；2.21.3+ 在 Windows/Mac/车机/WMPF 启用大屏模式）。
+
+   ⚠️ 遗留：字号/内边距仍是 rpx，在 ≥768px 的屏上会跟着屏宽等比放大
+   （rpx 的定义就是 750rpx = 整个屏宽，768pt 的 iPad 上 750rpx = 768px，
+   等于手机上的 2 倍）。只改列数能缓解「一张卡占满整屏」，但不等于完整的大屏适配；
+   要彻底解决需在本分支内把字号/内边距也改成 px——方案见《响应式布局方案-v1.md》。 */
+@media (min-width: 600px) {
+  .paper-grid { gap: 28rpx; }
+  .paper-card { width: calc((100% - 56rpx) / 3 - 2rpx); }
+  /* 3 列后卡片变窄，缩略图若继续用固定 320rpx 高会被拉成长条，
+     改为按 A4 竖版比例（3:4）跟着卡宽自适应 */
+  .paper-thumb { height: auto; aspect-ratio: 3 / 4; }
+}
+@media (min-width: 900px) {
+  .paper-grid { gap: 28rpx; }
+  .paper-card { width: calc((100% - 84rpx) / 4 - 2rpx); }
 }
