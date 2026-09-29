@@ -209,8 +209,13 @@ Page({
   // ---------- 预览画布 ----------
   _initPreview() {
     const win = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    // 页面左右留白 32rpx×2 + 纸张舞台内边距 20rpx×2 ≈ 104rpx
-    const cssW = win.windowWidth - 52
+    // 可用宽度 = 页面宽 - 左右留白 32rpx×2（.preview-area 的 padding）。
+    // v1.3.1：纸张舞台已去掉内边距（同时去掉台面背景），故不再扣原先的 20rpx×2——
+    // 纸张宽度与下方参数卡片（同受 32rpx×2 留白约束）对齐。
+    // 同时改用 rpx→px 精确换算：原硬编码 -52px 只在 375pt 屏精确，更宽的屏上系数不是 0.5，
+    // 会让纸张比可用宽度大出几个 px（两侧轻微溢出、与其它块错位）。
+    const rpx2px = win.windowWidth / 750
+    const cssW = win.windowWidth - Math.round(64 * rpx2px)
     // 纸张比例跟着规格与方向走（原来写死 A4）
     const mm = papers.pageSizeMm(this._params.size, this._params.orient, { w: this._params.customW, h: this._params.customH })
     const cssH = cssW * (mm.h / mm.w)

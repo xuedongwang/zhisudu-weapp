@@ -40,17 +40,17 @@
 .paper-stage {
   /* 无台面样式（用户 2026-09-29 定稿）：白色纸张直接浮在页面底色（--bg #F6F5F1）上，
      不用深色台面。此前试过中性米灰台面 + 台面外阴影，观感偏重，改回「去掉背景」。
-     ⚠️ padding 必须保留 20rpx：canvas 宽度按 windowWidth-52 计算（= 页面左右留白 32rpx×2
-     + 这里 20rpx×2），去掉会让纸张两侧凭空多出留白、纸张变小 */
+     内边距为 0：纸张宽度与下方参数卡片对齐（各占页面宽 - 32rpx×2）；
+     ⚠️ 改这里必须同步 config.js 的 _initPreview 宽度计算（原来按含 20rpx×2 的 104rpx 扣减） */
   background: transparent;
-  padding: 0 20rpx 20rpx; /* 左右 20rpx 是 canvas 宽度计算的一部分，不可去；上下不需留白 */
+  padding: 0;
   position: relative;
 }
 /* 尺寸标签：独立行右对齐，不叠在 canvas 上（iOS 真机 canvas 原生层会盖住重叠区域） */
 .stage-caption {
   display: flex;
   justify-content: flex-end;
-  padding: 0 8rpx 12rpx;
+  padding: 0 0 12rpx; /* 左右不再缩进：标签右缘与纸张右缘对齐（纸张已与参数卡片同宽） */
 }
 .size-tag {
   background: rgba(43, 43, 40, 0.82);
