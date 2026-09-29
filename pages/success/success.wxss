@@ -65,3 +65,35 @@
   text-align: center;
   margin-top: 16rpx;
 }
+
+/* ==================== 响应式：大屏（v2.0）====================
+   依据见 app.wxss 顶部（三档口径 / 「大屏 px = 小屏 rpx ÷ 2」换算律 /
+   媒体查询必须放文件末尾）。手机竖屏永不命中 → 手机端零变化。 */
+@media (min-width: 600px) {
+  .scroll { padding: 20px 16px 0; }
+
+  .ok-ring {
+    width: 70px;
+    height: 70px;
+    margin: 10px auto 0;
+    box-shadow: 0 8px 24px rgba(14, 138, 109, 0.35);
+  }
+  .ok-check { font-size: 36px; }
+  .ok-title { font-size: 20px; margin-top: 14px; }
+  .meta { font-size: 12px; margin-top: 6px; }
+
+  .thumb-wrap { margin: 16px 0 4px; }
+  .thumb {
+    width: 150px;
+    height: 210px;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(40, 40, 30, 0.16);
+  }
+
+  .guide { margin-top: 20px; }
+  .guide-title { font-size: 14px; }
+  .guide-body { font-size: 12.5px; margin-top: 7px; }
+
+  .actions { gap: 10px; margin-top: 18px; }
+  .hint { font-size: 11px; margin-top: 8px; }
+}

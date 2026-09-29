@@ -42,3 +42,25 @@
 }
 .fdel { color: var(--sub); background: #F0EEE8; }
 .tbtn-hover { opacity: 0.7; }
+
+/* ==================== 响应式：大屏（v2.0）====================
+   依据见 app.wxss 顶部（三档口径 / 「大屏 px = 小屏 rpx ÷ 2」换算律 /
+   媒体查询必须放文件末尾）。手机竖屏永不命中 → 手机端零变化。 */
+@media (min-width: 600px) {
+  .page { padding: 12px 16px; }
+  /* 本页 .card 的紧凑内边距覆盖了全局 .card 的 28rpx，大屏同样要跟着覆盖 */
+  .card { padding: 4px 14px; }
+
+  .fav-item { gap: 10px; padding: 12px 0; }
+  .ficon { width: 30px; height: 42px; border-radius: 5px; }
+  .fname { font-size: 13.5px; }
+  .fdesc { font-size: 11px; margin-top: 2px; }
+  .fopen,
+  .fdel {
+    font-size: 11.5px;
+    border-radius: 14px;
+    padding: 0 12px;
+    line-height: 26px;
+  }
+  .fopen { border-width: 2px; }
+}

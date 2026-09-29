@@ -1,5 +1,5 @@
 <!-- pages/favs/favs.wxml -->
-<view class="page">
+<view class="page page-body">
   <view class="card" wx:if="{{favs.length}}">
     <view class="fav-item" wx:for="{{favs}}" wx:key="key">
       <view class="ficon">

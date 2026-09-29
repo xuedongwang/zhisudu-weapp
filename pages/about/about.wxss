@@ -53,3 +53,31 @@
   color: #B9B6AA;
   padding: 32rpx 0;
 }
+
+/* ==================== 响应式：大屏（v2.0）====================
+   依据见 app.wxss 顶部（三档口径 / 「大屏 px = 小屏 rpx ÷ 2」换算律 /
+   媒体查询必须放文件末尾）。手机竖屏永不命中 → 手机端零变化。 */
+@media (min-width: 600px) {
+  .page { padding: 16px; }
+
+  .brand { padding: 24px 0 12px; }
+  .logo { font-size: 28px; letter-spacing: 2px; }
+  .slogan { font-size: 13px; margin-top: 6px; }
+  .ver {
+    font-size: 11px;
+    border-radius: 12px;
+    padding: 3px 12px;
+    margin-top: 12px;
+  }
+
+  .ver-card { padding: 14px 16px; margin-bottom: 12px; }
+  .vhead { gap: 8px; }
+  .vtag { font-size: 11px; border-radius: 5px; padding: 2px 7px; }
+  .vtitle { font-size: 14px; }
+  .vdate { font-size: 11px; }
+  .vitems { margin-top: 9px; }
+  .vitem { font-size: 12px; }
+  .vitem .dot { margin-right: 5px; }
+
+  .foot { font-size: 11px; padding: 16px 0; }
+}

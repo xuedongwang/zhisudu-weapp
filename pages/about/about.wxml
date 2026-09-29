@@ -1,5 +1,5 @@
 <!-- pages/about/about.wxml -->
-<view class="page">
+<view class="page page-body">
   <!-- 品牌区 -->
   <view class="brand">
     <view class="logo">纸<text class="em">速</text>打</view>
