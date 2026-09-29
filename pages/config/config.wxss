@@ -38,7 +38,10 @@
   padding: 28rpx 32rpx 20rpx;
 }
 .paper-stage {
-  background: #FDFCFA;
+  /* 预览台底色 = 中性米灰：纸张本身是纯白（.preview-canvas 的 #fff），
+     原 #FDFCFA 与纸几乎同色，看不出纸的边界（用户 2026-09-29 反馈）。
+     注意只影响预览台——缩略图容器（home/favs/history 等）的 #FDFCFA 不动 */
+  background: #E5E2DA;
   border-radius: 20rpx;
   box-shadow: 0 8rpx 32rpx rgba(40, 40, 30, 0.12);
   padding: 20rpx;
@@ -62,6 +65,8 @@
   display: block;
   border-radius: 8rpx;
   background: #fff;
+  /* 纸张投影：在深色台面上进一步勾勒纸的边界（原型用 1px 描边表达同一层意思） */
+  box-shadow: 0 2rpx 10rpx rgba(40, 40, 30, 0.18);
 }
 
 /* 参数区：底部 padding 预留吸底栏高度（96 按钮 + 40 上下内边距）+ 安全区，保证最后一行能滚出遮挡 */
